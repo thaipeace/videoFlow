@@ -205,6 +205,7 @@ def create_task(
             "-NoProfile",
             "-Command",
             f'$t = Get-ScheduledTask -TaskName "{task_name}"; '
+            f'$t.Actions[0].WorkingDirectory = "{PROJECT_ROOT}"; '
             f'$t.Settings.WakeToRun = {wake_val}; '
             f'$t.Settings.StartWhenAvailable = $true; '
             f'$t.Settings.DisallowStartIfOnBatteries = $false; '
