@@ -4276,6 +4276,64 @@ và chính sách chống nội dung lặp lại / không có giá trị gia tăn
     return doc.strip() + "\n"
 
 
+DEFAULT_GDRIVE_WEBHOOK_URL = (
+    "https://script.google.com/macros/s/AKfycbzVrVvGB0HAFhO9GgH-g5EP_iPfoFjZlNdhX_tXhvu-bfeznog8WabsX8nYj2SwbvOd/exec"
+)
+
+
+def sync_editorial_script_to_gdrive(
+    file_path: Path,
+    webhook_url: Optional[str] = None,
+    timeout: int = 15,
+) -> bool:
+    """Best-effort cloud upload of an editorial script to Google Drive via Apps Script Webhook.
+
+    Uploads the proof-of-work editorial script text to the user's shared Google Drive folder,
+    keeping git history clean and avoiding long-term repo bloat.
+    """
+    try:
+        url = (
+            webhook_url
+            or os.environ.get("GDRIVE_WEBHOOK_URL", "").strip()
+            or DEFAULT_GDRIVE_WEBHOOK_URL
+        )
+        if not url:
+            return False
+
+        p = Path(file_path).resolve()
+        if not p.is_file():
+            return False
+
+        content = p.read_text(encoding="utf-8")
+        payload = json.dumps({"filename": p.name, "content": content}, ensure_ascii=False).encode("utf-8")
+
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw_resp = resp.read().decode("utf-8")
+            try:
+                data = json.loads(raw_resp)
+            except Exception:
+                data = {"raw": raw_resp}
+
+            if data.get("status") == "success":
+                logger.info(
+                    "Google Drive Sync: Successfully uploaded '%s' (File ID: %s)",
+                    p.name,
+                    data.get("fileId", "unknown"),
+                )
+                return True
+            else:
+                logger.warning("Google Drive Sync returned non-success for '%s': %s", p.name, data)
+    except Exception as exc:
+        logger.warning("Google Drive Sync skipped/failed for '%s': %s", file_path.name, exc)
+    return False
+
+
 def export_editorial_script_file(
     manifest_data: dict,
     news_items: Optional[List[WorldNewsItem]] = None,
@@ -4306,6 +4364,12 @@ def export_editorial_script_file(
         if out_p.is_dir():
             local_path = out_p / "script_raw.txt"
             local_path.write_text(text_content, encoding="utf-8")
+
+    # 3. Synchronize with Google Drive cloud backup (best-effort, non-blocking)
+    try:
+        sync_editorial_script_to_gdrive(central_path)
+    except Exception as drive_err:
+        logger.debug("Google Drive sync error: %s", drive_err)
 
     return central_path
 

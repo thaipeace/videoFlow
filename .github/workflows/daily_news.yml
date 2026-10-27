@@ -90,6 +90,13 @@ jobs:
             $YT_FLAG \
             $TEST_FLAG
 
+      - name: Upload Editorial Scripts to Google Drive
+        if: always()
+        env:
+          GDRIVE_WEBHOOK_URL: ${{ secrets.GDRIVE_WEBHOOK_URL || 'https://script.google.com/macros/s/AKfycbzVrVvGB0HAFhO9GgH-g5EP_iPfoFjZlNdhX_tXhvu-bfeznog8WabsX8nYj2SwbvOd/exec' }}
+        run: |
+          python scripts/upload_to_gdrive.py --dir runtime/data/editorial_scripts --limit 5 || true
+
       - name: Upload Logs & Social Publish Manifest
         if: always()
         uses: actions/upload-artifact@v4
@@ -99,5 +106,6 @@ jobs:
             runtime/daily_news/
             runtime/data/social_publish_manifest.json
             runtime/data/daily_news_settings.json
+            runtime/data/editorial_scripts/
           retention-days: 3
           if-no-files-found: ignore

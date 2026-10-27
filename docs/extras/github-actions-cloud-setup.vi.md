@@ -37,6 +37,10 @@
 * **Name**: `YOUTUBE_CLIENT_SECRET_JSON`
 * **Secret**: Mở tệp `runtime/data/youtube_client_secret.json` trên máy tính của bạn, sao chép toàn bộ nội dung JSON rồi dán vào đây.
 
+### Secret 4 (Tùy chọn): `GDRIVE_WEBHOOK_URL`
+* **Name**: `GDRIVE_WEBHOOK_URL`
+* **Secret**: Đã được cấu hình mặc định sẵn Webhook Google Apps Script của bạn. Nếu sau này bạn đổi Webhook folder khác, chỉ cần nhập link URL Webhook mới vào đây.
+
 ---
 
 ## 3. Cách Bấm Chạy Thử Ngay Lập Tức Trên Web (Manual Trigger)
@@ -49,4 +53,16 @@ Bất kỳ lúc nào muốn chạy thử một bản tin mà không cần đợi
    * **Chủ đề bản tin**: Chọn `'tin_moi'`, `'hope'`, `'viral'`, `'tin_nong'` hoặc `'auto'`.
    * **Tự động đăng tải lên YouTube**: Tích chọn `true` (hoặc `false` nếu chỉ muốn xuất video kiểm tra).
    * **Chế độ test nhanh**: Tích chọn `true` nếu muốn test luồng render cực nhanh trong 10 giây với mock data.
-4. Bấm **Run workflow**. Sau khi chạy xong, bạn có thể tải file log và manifest tại mục **Artifacts**.
+4. Bấm **Run workflow**.
+
+---
+
+## 4. Lưu Trữ Tự Động & Không Gây Rác Repo Git
+
+Hệ thống được thiết kế theo nguyên tắc **Zero-Pollution Git**:
+1. **Không lưu video MP4 hay ảnh tạm vào Git**: Video sau khi xuất bản sẽ được đẩy thẳng lên YouTube.
+2. **Kịch bản biên tập (Editorial Scripts / Proof-of-Work)**:
+   * Mỗi lần chạy xong một bản tin, toàn bộ kịch bản và bản chứng minh nguồn tin gốc sẽ được tự động đồng bộ đẩy vào **Google Drive** của bạn qua Google Apps Script Webhook.
+   * Hoàn toàn không commit file văn bản kịch bản vào Git, giúp lịch sử Git luôn sạch đẹp, dung lượng nhẹ.
+3. **GitHub Artifacts**:
+   * Các file nhật ký chạy (log), manifest và bản nháp tạm thời được lưu tại mục **Artifacts** của lượt chạy GitHub Actions và sẽ **tự động xóa sau 3 ngày**, không làm đầy bộ nhớ lưu trữ.

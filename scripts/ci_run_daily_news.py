@@ -186,6 +186,17 @@ def main() -> int:
     env["PYTHONIOENCODING"] = "utf-8"
 
     res = subprocess.run(cmd, env=env)
+
+    # Post-run Google Drive archival for editorial scripts
+    try:
+        editorial_dir = PROJECT_ROOT / "runtime" / "data" / "editorial_scripts"
+        if editorial_dir.is_dir():
+            from scripts.upload_to_gdrive import upload_directory_files
+            logger.info("Archiving recent editorial scripts to Google Drive...")
+            upload_directory_files(editorial_dir, pattern="*.txt", limit=3)
+    except Exception as drive_exc:
+        logger.warning("Post-run Google Drive archival skipped or failed: %s", drive_exc)
+
     return res.returncode
 
 
