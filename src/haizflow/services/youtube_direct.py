@@ -56,7 +56,20 @@ class YouTubeUploadError(Exception):
 
 def get_client_credentials() -> Tuple[str, str]:
     """Retrieve Client ID and Client Secret from file or environment."""
-    # 1. Check file
+    # 1. Check environment JSON string
+    env_secret_json = os.environ.get("YOUTUBE_CLIENT_SECRET_JSON", "").strip()
+    if env_secret_json:
+        try:
+            data = json.loads(env_secret_json)
+            cfg = data.get("installed") or data.get("web") or data
+            client_id = cfg.get("client_id", "").strip()
+            client_secret = cfg.get("client_secret", "").strip()
+            if client_id and client_secret:
+                return client_id, client_secret
+        except Exception as exc:
+            LOGGER.warning("Could not parse YOUTUBE_CLIENT_SECRET_JSON from env: %s", exc)
+
+    # 2. Check file
     if CLIENT_SECRET_FILE.is_file():
         try:
             data = json.loads(CLIENT_SECRET_FILE.read_text(encoding="utf-8"))
@@ -69,7 +82,7 @@ def get_client_credentials() -> Tuple[str, str]:
         except Exception as exc:
             LOGGER.warning("Could not read %s: %s", CLIENT_SECRET_FILE, exc)
 
-    # 2. Check environment variables
+    # 3. Check environment variables
     env_id = os.environ.get("YOUTUBE_CLIENT_ID", "").strip()
     env_secret = os.environ.get("YOUTUBE_CLIENT_SECRET", "").strip()
     return env_id, env_secret
@@ -108,7 +121,13 @@ def import_client_secret_file(file_path: str) -> Tuple[str, str]:
 
 
 def get_saved_token() -> Optional[Dict[str, Any]]:
-    """Load saved OAuth tokens from disk."""
+    """Load saved OAuth tokens from environment or disk."""
+    env_token = os.environ.get("YOUTUBE_TOKEN_JSON", "").strip()
+    if env_token:
+        try:
+            return json.loads(env_token)
+        except Exception as exc:
+            LOGGER.warning("Could not parse YOUTUBE_TOKEN_JSON from env: %s", exc)
     if not TOKEN_FILE.is_file():
         return None
     try:

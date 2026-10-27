@@ -3459,19 +3459,22 @@ def create_social_post_visual(
 
     canvas = Image.new("RGB", (target_w, target_h), (12, 16, 24))
 
-    # Font setup
-    try:
-        font_author = ImageFont.truetype("segoeuib.ttf", max(24, int(target_w * 0.034)))
-        font_sub = ImageFont.truetype("segoeui.ttf", max(18, int(target_w * 0.024)))
-        font_text = ImageFont.truetype("segoeuib.ttf", max(26, int(target_w * 0.035)))
-        font_badge = ImageFont.truetype("segoeuib.ttf", max(18, int(target_w * 0.022)))
-        font_stats = ImageFont.truetype("segoeui.ttf", max(18, int(target_w * 0.024)))
-    except Exception:
-        font_author = ImageFont.load_default()
-        font_sub = font_author
-        font_text = font_author
-        font_badge = font_author
-        font_stats = font_author
+    # Font setup (cross-platform with Linux DejaVu fallback)
+    def _safe_font(names: Tuple[str, ...], size: int) -> ImageFont.ImageFont:
+        for n in names:
+            try:
+                return ImageFont.truetype(n, size)
+            except Exception:
+                continue
+        return ImageFont.load_default()
+
+    bold_fonts = ("segoeuib.ttf", "arialbd.ttf", "DejaVuSans-Bold.ttf", "LiberationSans-Bold.ttf")
+    reg_fonts = ("segoeui.ttf", "arial.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf")
+    font_author = _safe_font(bold_fonts, max(24, int(target_w * 0.034)))
+    font_sub = _safe_font(reg_fonts, max(18, int(target_w * 0.024)))
+    font_text = _safe_font(bold_fonts, max(26, int(target_w * 0.035)))
+    font_badge = _safe_font(bold_fonts, max(18, int(target_w * 0.022)))
+    font_stats = _safe_font(reg_fonts, max(18, int(target_w * 0.024)))
 
     # 1. Background (if photo available, blur heavily for ambient glow)
     has_photo = bool(image_path and Path(image_path).is_file() and not is_image_mostly_blank(image_path))
