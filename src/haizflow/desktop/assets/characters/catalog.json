@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "characters": [
+    {
+      "id": "char_my_dung",
+      "display_name": "Mỹ Dung (22 tuổi - Nữ chính)",
+      "gender": "female",
+      "age_group": "22 tuổi",
+      "thumbnail": "my_dung_portrait.jpg",
+      "style_tag": "cinematic",
+      "prompt_anchor": "22-year-old Vietnamese young woman named My Dung, slender build, pale ivory sickly skin, delicate facial features, expressive mournful dark eyes, shoulder-length straight black hair with wet strands clinging to her temple. Signature trait: a distinct small dark mole located directly under her chin. Faded loose-fitting hospital patient gown.",
+      "reference_images": ["my_dung_portrait.jpg"],
+      "description": "Chân dung cận mặt chính diện: Cô gái 22 tuổi rơi vào tình trạng chết lâm sàng. Điểm nhận diện: nốt ruồi dưới cằm, tóc rối có vệt tóc ướt dính thái dương, váy bệnh nhân xám bạc."
+    },
+    {
+      "id": "char_ba_hanh",
+      "display_name": "Bà Hạnh (54 tuổi - Người mẹ)",
+      "gender": "female",
+      "age_group": "54 tuổi",
+      "thumbnail": "ba_hanh_portrait.jpg",
+      "style_tag": "cinematic",
+      "prompt_anchor": "54-year-old weathered Vietnamese mother named Ba Hanh, tired lined Asian face etched with deep distress, tear-stained swollen red eyes, salt-and-pepper hair pulled into a loose messy low bun with stray wisps. Arthritic swollen finger joints tightly clutching an old battered faux-leather handbag on her lap, worn floral patterned cotton short-sleeve blouse.",
+      "reference_images": ["ba_hanh_portrait.jpg"],
+      "description": "Chân dung cận mặt chính diện: Người mẹ 54 tuổi tần tảo, đau đớn kiệt cùng. Điểm nhận diện: gương mặt hằn nếp nhăn, mắt đỏ hoe sưng húp, tóc muối tiêu búi thấp, áo hoa cotton."
+    },
+    {
+      "id": "char_nguoi_ao_den",
+      "display_name": "Người Áo Đen (Thần Dẫn Hồn)",
+      "gender": "other",
+      "age_group": "Bất tử",
+      "thumbnail": "nguoi_ao_den_portrait.jpg",
+      "style_tag": "cinematic",
+      "prompt_anchor": "Transcendent psychopomp deity (Nguoi Ao Den), transcendent smooth porcelain-alabaster visage devoid of mortal human facial muscles, pores, or fleshy contours, serene immortal mask-like stillness. Otherworldly deep dark abyssal void eyes devoid of pupils or veins, timeless sleek seamless dark hair, impeccably pressed seamless matte-black ceremonial long coat, casts NO shadow.",
+      "reference_images": ["nguoi_ao_den_portrait.jpg"],
+      "description": "Chân dung cận mặt chính diện: Thực thể thần linh dẫn hồn. Điểm nhận diện: mặt tượng sứ nhẵn bóng, mắt hố sâu đen tuyền, áo măng-tô đen phẳng phiu không cúc, không có bóng đổ."
+    },
+    {
+      "id": "char_an",
+      "display_name": "An (22 tuổi - Cô gái áo xám)",
+      "gender": "female",
+      "age_group": "22 tuổi",
+      "thumbnail": "an_portrait.jpg",
+      "style_tag": "cinematic",
+      "prompt_anchor": "22-year-old Vietnamese young woman named An, wanderer spirit, slender athletic build, cool composed yet melancholic expression, sharp observant dark eyes with quiet vigilance, textured chin-length short black hair in a messy layered bob cut. Signature trait: faint ash-grey smudges like cold cremated incense dust subtly tracing along her cheekbone. Wearing an oversized muted grey utilitarian jacket with a tall collar, hands tucked in pockets.",
+      "reference_images": ["an_portrait.jpg"],
+      "description": "Chân dung cận mặt chính diện: Cô gái trẻ bí ẩn mặc áo khoác xám, linh hồn thấu tỏ cõi âm. Điểm nhận diện: tóc ngắn tỉa lớp ngang cằm, vệt xám mờ như bụi tro trên gò má, áo khoác xám cổ cao tay đút túi, ánh mắt sắc sảo cảnh giác."
+    }
+  ]
+}

@@ -1,0 +1,96 @@
+# HaizFlow desktop ignore rules
+
+# Python virtual environments
+.venv/
+venv/
+env/
+ENV/
+python/
+
+# Legacy Node folders, if any remain locally
+node_modules/
+frontend/node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Runtime directory (models, caches, logs, jobs, binaries, user data)
+runtime/*
+!runtime/*.json
+data/
+.cache/
+**/.cache/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.system_generated/
+scratch/
+
+# Large binaries
+**/bin/*.exe
+**/bin/ollama/
+*.exe
+*.dll
+*.dylib
+*.so
+
+# User data and temporary media
+storage/
+**/temp/
+*.log
+*.bak
+*.lock
+!uv.lock
+!dependency-lock-manifest.json
+!engine-dependency-lock-manifest.json
+
+# Local loose test media
+/*.mp3
+/*.wav
+/*.mp4
+/*.mov
+/*.mkv
+tests/*.mp4
+tests/*.mov
+tests/*.mkv
+
+# Build artifacts
+frontend/dist/
+dist/
+build/
+out/
+
+# Environment configs & credentials
+.env
+.env*.local
+*secret*.json
+*token*.json
+gemini-api-keys.json
+youtube_token.json
+youtube_client_secret.json
+
+# Legacy paths from the old web/backend layout
+backend/
+frontend/
+
+# Python bytecode and runtime
+__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+*.egg-info/
+**/*.egg-info/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
