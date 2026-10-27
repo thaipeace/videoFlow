@@ -1,113 +1,160 @@
 <div align="center">
-  <img src="src/haizflow/desktop/assets/branding/haizflow-mark.png" width="96" alt="HaizFlow logo">
-  <h1>HaizFlow</h1>
-  <p><strong>A free Windows app for downloading, translating, subtitling and dubbing videos.</strong></p>
-  <p><a href="https://github.com/MachHongHai/HaizFlow/releases/download/v1.0.0/HaizFlow-1.0.0-Setup.exe">Installation</a> · <a href="docs/user-guide.md">User guide</a> · <a href="docs/support.md">Help</a> · <a href="README.vi.md">Tiếng Việt</a></p>
+  <img src="src/haizflow/desktop/assets/branding/haizflow-mark.png" width="96" alt="videoFlow logo">
+  <h1>videoFlow (HaizFlow Edition)</h1>
+  <p><strong>A comprehensive Windows desktop application for downloading, translating, subtitling, dubbing, automated daily news broadcasting, and AI story/article-to-video generation.</strong></p>
+  <p><a href="https://github.com/thaipeace/videoFlow">GitHub Repository</a> · <a href="docs/user-guide.md">User Guide</a> · <a href="docs/support.md">Help</a> · <a href="README.vi.md">Tiếng Việt</a></p>
 </div>
 
-## About HaizFlow
+## About videoFlow
 
-HaizFlow helps you download videos, translate speech, create subtitles and add translated voice tracks. Process one video or a batch, cover original subtitles and assign different voices to different speakers. You can publish processed videos to social media through Zernio.
+**videoFlow** (built upon the open HaizFlow core) is an end-to-end automated video creation and localization platform for Windows. It provides a complete workflow from offline speech translation, subtitle generation, and multi-speaker voice dubbing to **fully autonomous daily news production** and **AI-powered novel/article-to-video cinema creation**.
 
-Automatic mode runs the steps you select. The Manual editor lets you review and correct captions or voice tracks before exporting.
+The application offers flexible workflows:
+- **Automatic & Batch Processing:** Process single or multiple videos in queues with local offline AI models (Whisper, HY-MT2) or cloud engines (Gemini Flash).
+- **Manual Editor:** Review and fine-tune subtitles, segment timestamps, audio timelines, and voice synthesis before exporting.
+- **Automated Daily News:** Completely autonomous news pipeline from RSS collection, AI editorial synthesis, and TV-broadcast motion graphics to scheduled YouTube publishing.
+- **AI Story & Article-to-Video:** Turn raw text, fiction novels, or journalism into narrated videos with consistent 2D character presets, Ken Burns camera motion, and customizable visual styles.
 
-## Main features
+---
 
-| Feature | What you can do |
+## Main Features
+
+| Feature | Capabilities |
 | --- | --- |
-| **Batch video downloads** | Select multiple videos from supported public channels or profiles and queue them for download. |
-| **Video translation** | Recognize speech with Whisper; translate locally with HY-MT2 or use Gemini. Review translations before exporting. |
-| **Subtitle creation** | Create captions from video speech; edit text, timing, Bangers styling and karaoke highlighting. |
-| **Video dubbing** | Generate speech for translated text using built-in voices or a reference sample you have permission to use. |
-| **Automatic processing** | Choose languages, models and voice settings, then run your selected recognition, translation, dubbing and caption-coverage steps. |
-| **Batch processing** | Apply common settings to multiple videos and follow each video's progress and results. |
-| **Cover original subtitles** | Detect caption regions with OCR and cover them using blur or background patching. |
-| **Multiple-speaker detection** | Group speakers and assign a separate voice to each group instead of using one voice for the entire conversation. |
-| **Social publishing** | Select an account, prepare the post and publish through Zernio. You can use processed videos directly from projects. |
+| 📰 **Automated Daily News (New)** | Multi-region independent RSS ingestion, Gemini editorial synthesis, TV-grade broadcast styling (scrolling ticker bar, channel logo, 3D intro globe, CTA overlay), and background Windows Task Scheduler triggers for direct YouTube publishing. |
+| 📖 **AI Story / Article-to-Video (New)** | Convert articles, web novels, and short stories into cinematic videos with expressive narration, AI story director scene scoring, 2D character appearance consistency, and smooth Ken Burns motion. |
+| **Video Translation** | Speech recognition with Whisper; local offline translation with HY-MT2 or online with Gemini Flash. Full review before export. |
+| **Subtitles & Karaoke** | Extract captions from audio; customize timing, Bangers font styling, and vibrant karaoke word-highlight animations. |
+| **Voice Dubbing & Cloning** | Natural voiceover using Edge-TTS, VieNeu, or OmniVoice voice cloning from reference audio samples. |
+| **Automatic & Batch Pipelines** | Apply unified configurations across queues with automated recognition, translation, dubbing, and caption overlay. |
+| **Subtitle Inpainting (OCR)** | Detect hardcoded burned-in subtitles via OCR and conceal them using intelligent blur or background patching. |
+| **Speaker Diarization** | Group speakers in multi-party dialogues and assign distinct voices to each persona. |
+| **Batch Video Downloads** | Ingest public channels or video links (e.g. Douyin, YouTube) and queue downloads locally. |
+| **Social Publishing** | Prepare titles, descriptions, and tags for multi-account publishing via Zernio or direct YouTube Data API OAuth2. |
 
-Manual tools run independently: dubbing is optional when you only need translated captions.
+---
 
-Preview the video, edit captions and choose suitable voices before exporting or publishing.
+## ✨ Flagship Feature: Automated Daily News Broadcast Pipeline
 
-## App screenshots
+Run an automated 24/7 news channel with zero manual daily effort:
 
-[Home](#home) · [Automatic processing](#automatic-processing) · [Manual editor](#manual-editor) · [Downloads](#downloads) · [Social publishing](#social-publishing) · [Settings](#settings)
+### 1. Three Timeslots — Four Daily Broadcasts
+* **05:30 AM — Morning News (`tin_moi`, 16:9 Widescreen 1080p):** World News + Top European Football. International news broadcast style, rotating 3D globe intro, and classic Navy Blue `#17365D` identity.
+* **11:30 AM — Midday Good News Shorts (`hope`, 9:16 Vertical):** Breakthrough science, medicine, green innovations, and heartwarming human stories (45–55s duration).
+* **12:00 PM — Midday Viral Curiosities Shorts (`viral`, 9:16 Vertical):** Trending social oddities, comedy clips, and bizarre world occurrences.
+* **05:30 PM — Evening Hot Briefing (`tin_nong`, 16:9 Widescreen 1080p):** War & Military Geopolitics + Breakthrough Technology / AI / Semiconductors. Tactical situation room radar style and Deep Red `#9F2028` theme.
 
-The screenshots show the Vietnamese interface. Options and version labels may differ in newer releases. Click an image to view it at full size.
+### 2. Independent Multi-Feed Ingestion & Strict Content Filters
+* **Separate Source Gathering:** Ingests World news from Reuters/AP/BBC/NPR/DW; Sports from BBC Sport/Sky Sports; War from ISW/Al Jazeera War; Tech from The Verge/TechCrunch. Each topic is fetched independently before AI synthesis to ensure peak informational depth.
+* **0% Domestic Vietnam News Rule:** Strict geographic keyword filtering keeps bulletins focused purely on global affairs.
+* **Strict War Filter:** Prevents entertainment, sports, or celebrity gossip from contaminating geopolitical warfare bulletins.
+* **100% Football Focus for Sports:** Covers the Top 5 European leagues (Premier League, La Liga, Serie A, Bundesliga, Ligue 1), UEFA Champions League, superstar spotlights (Mbappé, Haaland, Messi, CR7), and regional ASEAN football.
+
+### 3. Broadcast Graphics & Anti-Reused Content (YouTube YPP Ready)
+* **Scene 0 Direct Hook:** Kicks off immediately with a dramatic 1–2 sentence hook; eliminates repetitive generic greetings.
+* **News Ticker Strip:** Real-time bottom ticker scrolling summaries across the video with category badges.
+* **Brand Assets:** Corner channel logo, subtle anti-scraping watermark, and animated Subscribe CTA card with sound effects.
+* **7-Day Dynamic Thumbnail Palette:** Main hook title colors automatically shift according to the day of the week.
+
+### 4. Headless Automation via Windows Task Scheduler
+* Deep integration with Windows Task Scheduler using headless `pythonw.exe`.
+* **Wake PC from Sleep:** Enables wake timers (`WakeToRun = True`, `powercfg RTCWAKE = 1`) so the machine wakes automatically to produce and publish the broadcast.
+* Direct YouTube OAuth2 upload with automatic playlist assignment (`Bản tin thế giới`).
+* One-click health check and repair harness: `python scripts/check_daily_news_harness.py --repair`.
+
+---
+
+## ✨ Flagship Feature: AI Story & Article-to-Video Generator
+
+Turn any written story, light novel, or blog post into an illustrative animated video:
+
+* **AI Story Director:** Analyzes narrative text, segments speech into natural phrasing, and computes emotional Visual Impact Scores (1–10) to determine optimal keyframe placement.
+* **2D Character Presets & Consistency:** Bundled character library with fixed appearance prompt anchors (`prompt_anchor`) to preserve hairstyle, facial features, and attire across every illustrated scene.
+* **Art Styles:** Choose from 2D Anime, Manhwa Webtoon, Watercolor, Cyberpunk, Comic, or Oil Painting styles via Google Imagen 3 API or local Stable Diffusion.
+* **Ken Burns Cinematography:** Smooth pan and zoom camera transitions rendered via FFmpeg convert static illustrations into motion pictures.
+* **Emotive Narration:** High-fidelity Vietnamese and international voice synthesis via Edge-TTS, VieNeu natural tone, or reference voice cloning.
+* **Multi-Format Output:** Export in standard 16:9 widescreen or 9:16 vertical Shorts/Reels/TikTok formats.
+
+---
+
+## User Interface
+
+[Home](#home) · [Automatic](#automatic-processing) · [Manual Editor](#manual-editor) · [Daily News](#daily-news) · [AI Story](#ai-story-generator) · [Downloads](#downloads) · [Social Publishing](#social-publishing) · [Settings](#settings)
 
 ### Home
+Filter and manage existing projects or initiate new production sessions.
+![Home Page](docs/images/screenshots/home-2026-10-11.png)
 
-Find recent projects, filter by project type and create a new project.
+### Automatic Processing
+Configure voice, translation, and recognition models alongside subtitle inpainting and audio mastering.
+![Automatic Processing Page](docs/images/screenshots/automatic-2026-10-14.png)
 
-![HaizFlow home page with project cards and search filters](docs/images/screenshots/home-2026-10-11.png)
+### Manual Editor
+Compare source and target previews, inspect timeline segments, import SRTs, and edit subtitles frame-by-frame.
+![Manual Editor](docs/images/screenshots/manual-editor-2026-10-14.png)
 
-### Automatic processing
+### Daily News (New)
+Command center for automated daily bulletins: category switches, headline counts, script preview, schedule management, and direct YouTube upload status.
 
-Choose recognition, translation and voice models, then configure subtitle coverage, audio, background music and watermark settings.
-
-![Automatic processing page with source preview, language and voice settings](docs/images/screenshots/automatic-2026-10-14.png)
-
-### Manual editor
-
-Review source and result previews, run individual processing steps, split the Result timeline into clips, import SRT captions and export original or translated SRT for other editors.
-
-![Manual editor with video preview, processing panel and subtitle and audio timeline](docs/images/screenshots/manual-editor-2026-10-14.png)
+### AI Story Generator (New)
+Workspace for novel adaptation: paste text, choose voices, select 2D character presets, configure illustration counts, and export video.
 
 ### Downloads
+Inspect channel playlists (Douyin, YouTube, etc.) and queue video assets.
+![Downloads](docs/images/screenshots/downloads.png)
 
-Inspect a video, channel or audio link, review the channel's video list and select the items to download. This example shows a Douyin channel.
-
-![Downloads page showing a Douyin session and selectable channel videos](docs/images/screenshots/downloads.png)
-
-### Social publishing
-
-Add processed videos from existing projects to the publishing queue and prepare posts for your connected account through Zernio.
-
-![Social publishing page with an account, post queue and project video picker](docs/images/screenshots/social-publishing.png)
+### Social Publishing
+Prepare posts, tags, and accounts for scheduled social publishing.
+![Social Publishing](docs/images/screenshots/social-publishing.png)
 
 ### Settings
+Manage GPU/CPU acceleration, API keys (Gemini, Zernio), and offline resource packs.
+![Settings](docs/images/screenshots/settings.png)
 
-Choose the interface language and CPU/GPU mode. The other tabs manage API keys and resource packs.
+---
 
-![Settings page with language, processing device, warm-up and update controls](docs/images/screenshots/settings.png)
+## Installation & Quick Start
 
-## Local translation without per-call API charges
+### System Requirements
+* Windows 10 (1809+) or Windows 11 x64.
+* 16 GB RAM minimum.
+* NVIDIA GPU (Optional): Minimum 4 GB VRAM for local CUDA-accelerated models.
 
-Whisper and HY-MT2 run on your computer after their resource packs are installed. They do not require API keys or per-call translation fees. Gemini is an additional option for online translation.
+### Developer Setup from Source
+```powershell
+# 1. Clone repository
+git clone git@github.com:thaipeace/videoFlow.git
+cd videoFlow
 
-Computers without an NVIDIA GPU can use supported CPU options. Compatible NVIDIA GPUs can use GPU models. Choose a processing mode in Settings and install the matching resources for the tools you want to use.
+# 2. Setup Python 3.12+ virtual environment
+python -m venv .venv
+.venv\Scripts\activate
 
-Gemini, Zernio and other external services have their own terms, limits and charges. OmniVoice has the usage restriction described below.
+# 3. Install core dependencies
+pip install -r requirements.txt
 
-## Install and get started
+# 4. Launch Desktop Application
+python haizflow_desktop.py
+```
 
-**[Download the Windows installer](https://github.com/MachHongHai/HaizFlow/releases/download/v1.0.0/HaizFlow-1.0.0-Setup.exe).** Run this EXE only; do not download or extract Core files. Resource packs are installed inside HaizFlow. [Release and installation details](https://github.com/MachHongHai/HaizFlow/releases/latest).
+### Daily News CLI & Automation Controls
+```powershell
+# Run comprehensive diagnostic on schedules, keys, and YouTube connection
+python scripts/check_daily_news_harness.py
 
-1. Install and open HaizFlow. Vietnamese is the default; English is available in Settings.
-2. Choose CPU or NVIDIA GPU in **Settings → General**, then install the resource packs you need.
-3. Create an **Automatic**, **Manual** or **Batch** project and add videos.
-4. Select language, models and voice if needed. Process, review and **Export** the video.
+# Auto-repair and register Windows Task Scheduler jobs
+python scripts/check_daily_news_harness.py --repair
 
-Supported systems are Windows 10 version 1809 or later and Windows 11 x64, with at least 16 GB system RAM. Installer users do not need Python. Resource packs, projects and exports need additional storage; Setup and the Resource packs page show their corresponding requirements.
+# Execute a quick test run with mock data
+python scripts/run_daily_news.py --now --category tin_moi --quick-test
+```
 
-GPU mode supports compatible NVIDIA 4 GB-class cards (at least 3.5 GiB dedicated VRAM reported by CUDA). On 4 GB, use Whisper Small GPU, HY-MT2 CPU Q4 or Gemini, and OmniVoice GPU; these heavy stages run sequentially, with one voice sentence at a time. Whisper Turbo and full HY-MT2 GPU need more VRAM. Available VRAM and system memory still matter at runtime. Windows Smart App Control or an Application Control policy may block this unsigned build; see the [installation guide](docs/install.md).
+---
 
-See [Installation](docs/install.md) for CPU/GPU packs, API keys and storage. See the [User guide](docs/user-guide.md) for projects, captions, dubbing and publishing.
+## License & Attribution
 
-## License and commercial use
+videoFlow builds upon the foundational architecture of the HaizFlow project created by **Mạch Hồng Hải (Mach Hong Hai)**, extending it with autonomous broadcast engineering and generative AI story pipelines.
 
-HaizFlow is free to use under [HaizFlow Source-Available 1.0](LICENSE). This is not an OSI open-source license. Redistribution, repackaging and commercial software conditions are specified in LICENSE.
-
-**The current OmniVoice model is licensed for noncommercial use only.** Do not assume it can be used for advertising, monetized videos or client work without appropriate permission. HaizFlow's license does not replace the model license.
-
-You need permission to use imported video, music and voice samples. See [NOTICE](NOTICE) and [third-party notices](THIRD_PARTY_NOTICES.md). The [licensing review](docs/licensing-review.md) and [inactive draft terms](legal/LICENSE-SOURCE-AVAILABLE-DRAFT.md) are retained separately.
-
-HaizFlow uses Qt/PySide under LGPL and FFmpeg under GPL/LGPL, depending on the component. [Bundled library sources](https://github.com/MachHongHai/HaizFlow/releases/download/v1.0.0/HaizFlow-1.0.0-ThirdPartySources.zip) and [library replacement instructions](docs/third-party-library-replacement.md) are provided separately. Independent library-license rights remain available.
-
-## Support and contributions
-
-See [Help](docs/support.md) for resources, API keys and data management. You can also [send feedback or request support](https://github.com/MachHongHai/HaizFlow/issues). Never include keys or private data.
-
-Source installation, testing and packaging are covered in the [development guide](docs/development.md). See the [technical documentation](docs/README.md) to contribute code.
-
-Created by **Mạch Hồng Hải (Mach Hong Hai)**. [Star the repository](https://github.com/MachHongHai/HaizFlow) to follow the project.
+* Source code is distributed under the original project's [LICENSE](LICENSE).
+* OmniVoice models remain restricted to noncommercial usage under their respective licenses.
+* Utilizes Qt/PySide (LGPL), FFmpeg (GPL/LGPL), Edge-TTS, and associated open-source packages. See [NOTICE](NOTICE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
