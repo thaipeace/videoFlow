@@ -62,7 +62,7 @@ jobs:
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install Pillow pydub srt edge-tts
+          pip install Pillow pydub srt edge-tts numpy pydantic python-dotenv
 
       - name: Run Automated News Pipeline
         env:
