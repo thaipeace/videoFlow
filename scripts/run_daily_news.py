@@ -209,8 +209,8 @@ def main() -> int:
     max_topics_to_use = args.max_topics
     if cat_norm in ("viral", "tinla", "docla", "hope", "tinvui", "tin_vui", "hyvong"):
         aspect_ratio_to_use = "9:16"
-        if max_topics_to_use is None or max_topics_to_use <= 0 or max_topics_to_use in (7, 8):
-            max_topics_to_use = 3
+        if max_topics_to_use is None or max_topics_to_use <= 0 or max_topics_to_use in (3, 7, 8):
+            max_topics_to_use = 1
     else:
         # Standard long-form news (world, war, tech, sports) must strictly be 16:9 widescreen
         aspect_ratio_to_use = "16:9"

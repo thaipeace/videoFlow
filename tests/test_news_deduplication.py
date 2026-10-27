@@ -118,7 +118,7 @@ class TestNewsDeduplication(unittest.TestCase):
         dn.runtime_data_dir = mock_runtime
         try:
             # 1. Initial load should be empty in clean temp dir
-            history = load_published_news_history(max_age_days=7)
+            history = load_published_news_history()
             self.assertEqual(len(history), 0)
 
             # 2. Record new items
@@ -140,8 +140,8 @@ class TestNewsDeduplication(unittest.TestCase):
             ]
             record_published_news_history(items, "hope")
 
-            # 3. Verify history reloads with these items
-            reloaded = load_published_news_history(max_age_days=7)
+            # 3. Verify history reloads with these items (permanent retention: max_age_days=None)
+            reloaded = load_published_news_history(max_age_days=None)
             self.assertEqual(len(reloaded), 2)
             titles = [it["title"] for it in reloaded]
             self.assertIn(items[0].title, titles)
@@ -155,6 +155,47 @@ class TestNewsDeduplication(unittest.TestCase):
             ))
         finally:
             dn.runtime_data_dir = old_runtime
+
+    def test_single_standout_story_ranking(self):
+        from haizflow.services.daily_news import cluster_and_rank_news_topics
+        items = [
+            WorldNewsItem(
+                title="Ordinary cat sleeps on chair in local office",
+                summary="Normal office cat naps during working hours.",
+                source="Daily Local",
+                published="Today",
+                link="https://example.com/cat1",
+            ),
+            WorldNewsItem(
+                title="Bizarre modified motorcycle takes a 25-mile drive on open ocean water",
+                summary="An unbelievable and bizarre feat of amphibious vehicle engineering.",
+                source="UPI Odd News",
+                published="Today",
+                link="https://example.com/bike-water",
+            ),
+        ]
+        # For viral with max_topics = 1, should pick the highest novelty item
+        top1 = cluster_and_rank_news_topics(items, max_topics=1, category="viral")
+        self.assertEqual(len(top1), 1)
+        self.assertIn("motorcycle", top1[0].title.lower())
+
+    def test_single_story_fallback_script_duration_and_wordcount(self):
+        from haizflow.services.daily_news import fallback_offline_news_script
+        items = [
+            WorldNewsItem(
+                title="Modified motorcycle takes a 25-mile drive on water",
+                summary="A stuntman built an amphibious motorcycle and drove it twenty-five miles across the ocean waters.",
+                source="UPI Odd News",
+                published="Today",
+                link="https://example.com/bike-water",
+            ),
+        ]
+        digest = fallback_offline_news_script(items, max_topics=1, category="viral")
+        self.assertEqual(len(digest.scenes), 3)
+        total_words = sum(len(sc.text.split()) for sc in digest.scenes)
+        # Total words must be strictly <= 60 words so speech duration is under 25 seconds
+        self.assertLessEqual(total_words, 60)
+        self.assertGreaterEqual(total_words, 35)
 
 
 if __name__ == "__main__":

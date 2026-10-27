@@ -331,14 +331,14 @@ class DailyNewsController(QObject):
                 if self._aspect_ratio != "9:16":
                     self._aspect_ratio = "9:16"
                     self.aspectRatioChanged.emit()
-                if self._max_topics in (7, 8):
-                    self._max_topics = 3
+                if self._max_topics in (3, 7, 8):
+                    self._max_topics = 1
                     self.maxTopicsChanged.emit()
             else:
                 if self._aspect_ratio != "16:9":
                     self._aspect_ratio = "16:9"
                     self.aspectRatioChanged.emit()
-                if self._max_topics == 3:
+                if self._max_topics in (1, 3):
                     self._max_topics = 8
                     self.maxTopicsChanged.emit()
 
@@ -356,7 +356,7 @@ class DailyNewsController(QObject):
     @Slot(int)
     def setMaxTopics(self, val: int) -> None:
         if self._max_topics != val:
-            self._max_topics = max(2, min(15, int(val)))
+            self._max_topics = max(1, min(15, int(val)))
             self.maxTopicsChanged.emit()
             self._save_settings()
 
@@ -584,7 +584,7 @@ class DailyNewsController(QObject):
         playlist_title: str,
     ) -> None:
         """Batch save all production settings in one atomic operation to eliminate UI lag."""
-        topics_val = max(2, min(15, int(max_topics)))
+        topics_val = max(1, min(15, int(max_topics)))
         if self._max_topics != topics_val:
             self._max_topics = topics_val
             self.maxTopicsChanged.emit()
@@ -1749,7 +1749,7 @@ class DailyNewsController(QObject):
                 t_str = cfg.get("time", "05:30" if cat == "tin_moi" else ("11:30" if cat == "hope" else ("12:00" if cat == "viral" else "17:30")))
                 wake_up = cfg.get("wake_up", True)
                 ar = "9:16" if cat in ("viral", "hope") else "16:9"
-                mt = str(min(self._max_topics, 8 if cat == "viral" else 7)) if cat in ("viral", "hope") else str(self._max_topics)
+                mt = "1" if cat in ("viral", "hope") else str(self._max_topics)
                 cmd = [
                     python_exe,
                     str(script_path),
@@ -1806,7 +1806,7 @@ class DailyNewsController(QObject):
 
         try:
             ar = "9:16" if norm_cat in ("viral", "hope") else "16:9"
-            mt = str(self._max_topics)
+            mt = "1" if norm_cat in ("viral", "hope") else str(self._max_topics)
             cmd = [
                 python_exe,
                 str(script_path),

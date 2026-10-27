@@ -87,13 +87,15 @@ class TestDailyNewsController(unittest.TestCase):
         self.controller.setSelectedCategory("invalid")
         self.assertEqual(self.controller.selectedCategory, "tin_moi")
 
-        # Max topics clamping (2..15)
+        # Max topics clamping (1..15)
         self.controller.setMaxTopics(5)
         self.assertEqual(self.controller.maxTopics, 5)
         self.controller.setMaxTopics(999)
         self.assertEqual(self.controller.maxTopics, 15)
+        self.controller.setMaxTopics(0)
+        self.assertEqual(self.controller.maxTopics, 1)
         self.controller.setMaxTopics(1)
-        self.assertEqual(self.controller.maxTopics, 2)
+        self.assertEqual(self.controller.maxTopics, 1)
 
         # Aspect ratio
         self.controller.setAspectRatio("9:16")

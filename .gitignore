@@ -17,7 +17,12 @@ pnpm-lock.yaml
 # Runtime directory (models, caches, logs, jobs, binaries, user data)
 runtime/*
 !runtime/*.json
-data/
+!runtime/data/
+runtime/data/*
+!runtime/data/daily_news/
+runtime/data/daily_news/*
+!runtime/data/daily_news/published_news_history.json
+/data/
 .cache/
 **/.cache/
 .pytest_cache/

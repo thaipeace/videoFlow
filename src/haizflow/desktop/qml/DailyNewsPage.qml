@@ -681,9 +681,9 @@ Item {
                                     enabled: !root.isBusy
                                     currentValue: String(root.localMaxTopics)
                                     options: root.localAspectRatio === "9:16" ? [
-                                        { label: qsTr("Top 3 (Shorts chuẩn)"), value: "3" },
-                                        { label: qsTr("5 tin vắn"), value: "5" },
-                                        { label: qsTr("8 tin chi tiết"), value: "8" }
+                                        { label: qsTr("1 tin đỉnh nhất (<=25s)"), value: "1" },
+                                        { label: qsTr("Top 3 (Shorts)"), value: "3" },
+                                        { label: qsTr("5 tin vắn"), value: "5" }
                                     ] : [
                                         { label: qsTr("5 tin vắn"), value: "5" },
                                         { label: qsTr("8 tin (khuyên dùng)"), value: "8" },

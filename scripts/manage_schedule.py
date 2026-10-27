@@ -83,7 +83,7 @@ def get_task_command(
     # Enforce aspect ratio: Only viral and hope are 9:16 Shorts, all other categories are 16:9 widescreen
     is_short = cat_norm in ("viral", "hope", "tinla", "docla", "tinvui", "hyvong")
     ar = "9:16" if is_short else "16:9"
-    effective_topics = 3 if is_short and max_topics in (7, 8) else max_topics
+    effective_topics = 1 if is_short and max_topics in (3, 7, 8) else max_topics
 
     if PYTHONW_EXE.is_file():
         py_path = str(PYTHONW_EXE.resolve())

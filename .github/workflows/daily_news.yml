@@ -38,6 +38,9 @@ concurrency:
   group: daily-news-broadcast
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   produce-and-publish:
     name: Produce & Publish News Broadcast
@@ -47,6 +50,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
@@ -63,6 +68,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install Pillow pydub srt edge-tts numpy pydantic python-dotenv
+
+      - name: Restore Published News History Cache
+        uses: actions/cache/restore@v4
+        with:
+          path: runtime/data/daily_news/published_news_history.json
+          key: daily-news-history-${{ github.run_id }}
+          restore-keys: |
+            daily-news-history-
 
       - name: Run Automated News Pipeline
         env:
@@ -90,6 +103,27 @@ jobs:
             $YT_FLAG \
             $TEST_FLAG
 
+      - name: Save Published News History Cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: runtime/data/daily_news/published_news_history.json
+          key: daily-news-history-${{ github.run_id }}
+
+      - name: Commit and Push Updated News History
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f runtime/data/daily_news/published_news_history.json || true
+          if git diff --staged --quiet; then
+            echo "No changes in published news history."
+          else
+            git commit -m "chore(daily-news): update published news history [skip ci]"
+            git pull --rebase origin main || true
+            git push origin main || echo "Git push skipped or failed"
+          fi
+
       - name: Upload Editorial Scripts to Google Drive
         if: always()
         env:
@@ -106,6 +140,7 @@ jobs:
             runtime/daily_news/
             runtime/data/social_publish_manifest.json
             runtime/data/daily_news_settings.json
+            runtime/data/daily_news/published_news_history.json
             runtime/data/editorial_scripts/
           retention-days: 3
           if-no-files-found: ignore

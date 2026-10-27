@@ -1213,6 +1213,62 @@ def compose_article_video(
         if result.returncode != 0:
             raise RuntimeError(f"Final video muxing failed: {result.stderr.strip()}")
 
+        # Ensure YouTube Shorts hard duration ceiling: <= 25.0s
+        is_short_aspect = getattr(project.config, "aspect_ratio", "") == "9:16"
+        is_short_cat = getattr(project.config, "category", "") in ("viral", "hope", "tinla", "docla", "tinvui", "hyvong")
+        if is_short_aspect or is_short_cat:
+            from haizflow.utils.ffmpeg import get_video_duration
+            actual_dur = get_video_duration(str(output_video_path.resolve()))
+            max_short_sec = 25.0
+            if actual_dur > max_short_sec:
+                logger.info(
+                    "Shorts video duration (%.2fs) exceeds %.1fs limit. Applying dynamic adjustment to guarantee <= %.1fs.",
+                    actual_dur, max_short_sec, max_short_sec
+                )
+                capped_tmp = output_video_path.parent / f"capped_{output_video_path.name}"
+                target_dur = 24.8
+                speed_ratio = actual_dur / target_dur
+                if speed_ratio <= 1.30:
+                    cap_cmd = [
+                        _binary("ffmpeg"), "-y", "-hide_banner", "-loglevel", "error",
+                        "-i", str(output_video_path.resolve()),
+                        "-filter:v", f"setpts=PTS/{speed_ratio:.4f}",
+                        "-filter:a", f"atempo={speed_ratio:.4f}",
+                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+                        "-c:a", "aac", "-b:a", "320k",
+                        "-movflags", "+faststart",
+                        str(capped_tmp.resolve())
+                    ]
+                else:
+                    fade_st = max_short_sec - 0.5
+                    cap_cmd = [
+                        _binary("ffmpeg"), "-y", "-hide_banner", "-loglevel", "error",
+                        "-i", str(output_video_path.resolve()),
+                        "-t", f"{max_short_sec:.2f}",
+                        "-filter:a", f"afade=t=out:st={fade_st:.2f}:d=0.5",
+                        "-c:v", "copy",
+                        "-c:a", "aac", "-b:a", "320k",
+                        "-movflags", "+faststart",
+                        str(capped_tmp.resolve())
+                    ]
+                res_cap = subprocess.run(
+                    cap_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=120.0,
+                    check=False,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+                if res_cap.returncode == 0 and capped_tmp.is_file() and capped_tmp.stat().st_size > 1000:
+                    os.replace(capped_tmp, output_video_path)
+                    logger.info("Capped Shorts video duration successfully to %.2fs", get_video_duration(str(output_video_path.resolve())))
+                else:
+                    if capped_tmp.is_file():
+                        try:
+                            capped_tmp.unlink()
+                        except Exception:
+                            pass
+
         report(100, "Xuất video YouTube hoàn tất!")
         return output_video_path
 

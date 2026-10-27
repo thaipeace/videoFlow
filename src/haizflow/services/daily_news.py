@@ -53,6 +53,10 @@ logger = logging.getLogger(__name__)
 
 # Gemini Candidate Models for Automatic Failover / High Availability
 GEMINI_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-latest",
     "gemini-3-flash-preview",
     "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
@@ -672,15 +676,16 @@ def _extract_title_tokens(title: str) -> set[str]:
     return {w for w in words if w not in stopwords}
 
 
-def load_published_news_history(max_age_days: int = 7) -> List[Dict[str, Any]]:
-    """Load items published in the last `max_age_days`.
+def load_published_news_history(max_age_days: Optional[int] = None) -> List[Dict[str, Any]]:
+    """Load items published in history.
 
-    If the history file does not exist, automatically bootstrap by scanning
-    existing social_publish_manifest.json files in runtime_data_dir() / 'daily_news'.
+    If max_age_days is None (default), loads all published items from the beginning
+    of time ("không trùng những tin đã đăng từ trước đến giờ").
+    If max_age_days is an integer, filters out items older than that cutoff.
     """
     history_file = get_news_history_path()
     items: List[Dict[str, Any]] = []
-    cutoff_dt = datetime.now() - timedelta(days=max_age_days)
+    cutoff_dt = (datetime.now() - timedelta(days=max_age_days)) if max_age_days is not None else None
 
     if history_file.is_file():
         try:
@@ -689,7 +694,7 @@ def load_published_news_history(max_age_days: int = 7) -> List[Dict[str, Any]]:
             for it in raw_items:
                 ts = it.get("timestamp") or it.get("created_at") or ""
                 keep = True
-                if ts:
+                if cutoff_dt and ts:
                     try:
                         it_dt = datetime.fromisoformat(str(ts)[:19])
                         if it_dt < cutoff_dt:
@@ -710,13 +715,13 @@ def load_published_news_history(max_age_days: int = 7) -> List[Dict[str, Any]]:
     return items
 
 
-def _bootstrap_history_from_manifests(max_age_days: int = 7) -> List[Dict[str, Any]]:
+def _bootstrap_history_from_manifests(max_age_days: Optional[int] = None) -> List[Dict[str, Any]]:
     """Scan existing output folders for social_publish_manifest.json to bootstrap history."""
     items: List[Dict[str, Any]] = []
     base_dir = runtime_data_dir() / "daily_news"
     if not base_dir.is_dir():
         return items
-    cutoff_dt = datetime.now() - timedelta(days=max_age_days)
+    cutoff_dt = (datetime.now() - timedelta(days=max_age_days)) if max_age_days is not None else None
     seen_keys: set[str] = set()
 
     for sub in base_dir.iterdir():
@@ -724,7 +729,7 @@ def _bootstrap_history_from_manifests(max_age_days: int = 7) -> List[Dict[str, A
             continue
         try:
             mtime = datetime.fromtimestamp(sub.stat().st_mtime)
-            if mtime < cutoff_dt:
+            if cutoff_dt and mtime < cutoff_dt:
                 continue
         except Exception:
             pass
@@ -765,10 +770,10 @@ def save_published_news_history(history: List[Dict[str, Any]]) -> None:
 
 
 def record_published_news_history(news_items: List[Any], category: str) -> None:
-    """Record newly used items into the persistent 7-day history."""
+    """Record newly used items into the permanent all-time history."""
     if not news_items:
         return
-    history = load_published_news_history(max_age_days=7)
+    history = load_published_news_history(max_age_days=None)
     now_iso = datetime.now().isoformat()
     norm_cat = normalize_category(category)
 
@@ -1811,7 +1816,11 @@ def cluster_and_rank_news_topics(
         # Rank by multi-source prominence and substantive summary
         unified_items.sort(key=lambda it: getattr(it, "_prominence_score", 0.0) + len(it.summary) * 0.01, reverse=True)
 
-    # Regional Quota Balancing across ALL categories (including Shorts: viral & hope)
+    # When targeting 1 single standout story, pick the absolute #1 ranked story directly
+    if max_topics <= 1:
+        return unified_items[:max_topics]
+
+    # Regional Quota Balancing across multi-topic broadcasts (including Shorts: viral & hope)
     asia_items = [it for it in unified_items if detect_news_region(it) == "asia_neighbor"]
     other_items = [it for it in unified_items if detect_news_region(it) != "asia_neighbor"]
 
@@ -1903,7 +1912,7 @@ def fetch_world_news_rss(
     seen_titles: set[str] = set()
     published_history: List[Dict[str, Any]] = []
     try:
-        published_history = load_published_news_history(max_age_days=7)
+        published_history = load_published_news_history(max_age_days=None)
     except Exception as exc:
         logger.warning("Could not load published news history: %s", exc)
 
@@ -2443,7 +2452,13 @@ def synthesize_news_script_with_gemini(
     )
 
     if category in ("viral", "hope"):
-        if max_topics <= 3:
+        if max_topics == 1:
+            scenes_per_topic_desc = "3 phân cảnh mạch lạc cho ĐÚNG 1 CÂU CHUYỆN NỔI BẬT DUY NHẤT (Scene 0: Hook 10-12 từ; Scene 1: Diễn biến kịch tính 26-30 từ; Scene 2: Kết thúc bất ngờ/ý nghĩa & CTA ngắn 12-14 từ)"
+            target_words = "khoảng 50 đến 58 từ tiếng Việt (BẮT BUỘC DƯỚI 62 TỪ, THỜI LƯỢNG CAO NHẤT 25 GIÂY CHUẨN YOUTUBE SHORTS)"
+            min_scenes = 3
+            max_scenes = 3
+            word_count_guideline = "Scene 0: 10-12 từ, Scene 1: 26-30 từ, Scene 2: 12-14 từ (TỔNG KỊCH BẢN BẮT BUỘC DƯỚI 60 TỪ)"
+        elif max_topics <= 3:
             scenes_per_topic_desc = f"1 phân cảnh chi tiết, sống động và hấp dẫn (25-35 từ) cho mỗi sự kiện (tập trung Top {max_topics} sự kiện đắt giá nhất)"
             target_words = "khoảng 130 đến 180 từ tiếng Việt (khoảng 45 đến 55 giây, nhịp điệu cuốn hút chuẩn YouTube Shorts Top 3)"
             min_scenes = max_topics + 2
@@ -2531,7 +2546,23 @@ def synthesize_news_script_with_gemini(
 - TUYỆT ĐỐI KHÔNG đưa tin về Việt Nam.
 """
     elif category == "viral":
-        category_specific_rules = f"""
+        if max_topics == 1:
+            category_specific_rules = f"""
+ĐẶC THÙ BẮT BUỘC CHO SHORTS TIN ĐỘC LẠ (CHUẨN YOUTUBE SHORTS - ĐÚNG 1 TIN NỔI BẬT NHẤT - ĐỘ DÀI CAO NHẤT 25 GIÂY):
+- CHỌN ĐÚNG 1 SỰ KIỆN DUY NHẤT: Chọn câu chuyện ĐỘC LẠ hoặc HÀI HƯỚC NHẤT trong danh sách được cung cấp.
+- GIỚI HẠN THỜI LƯỢNG NGHIÊM NGẶT (TỐI ĐA 25 GIÂY):
+  + TỔNG TOÀN BỘ KỊCH BẢN TẤT CẢ PHÂN CẢNH TỪ 50 ĐẾN 58 TỪ TIẾNG VIỆT (BẮT BUỘC DƯỚI 60 TỪ ĐỂ ĐỌC DƯỚI 25 GIÂY).
+  + KỊCH BẢN GỒM ĐÚNG 3 PHÂN CẢNH (SCENE 0, 1, 2):
+    * SCENE 0 (HOOK CHỚP NHOÁNG): 10 - 12 từ. Cú hook giật gân/bất ngờ đi thẳng vào khoảnh khắc khó tin nhất. TUYỆT ĐỐI CẤM chào hỏi, không giới thiệu.
+    * SCENE 1 (DIỄN BIẾN CAO TRÀO): 26 - 30 từ. Tường thuật chi tiết và sống động diễn biến kỳ dị hoặc hài hước của sự việc (ai, ở đâu, chuyện gì đã diễn ra).
+    * SCENE 2 (KẾT THÚC & CTA): 12 - 14 từ. Đúc kết kết cục bất ngờ hoặc dí dỏm + Kêu gọi đăng ký kênh ("Đăng ký kênh để đón xem tin độc lạ mỗi ngày!").
+- Tiêu đề: chỉ cần trả "hook_title" ở trên; hệ thống tự ghép đuôi " - {cfg.get('title_suffix_label', 'Tin Nóng & Độc Lạ')} DD/MM/YYYY #Shorts".
+- TUYỆT ĐỐI CẤM đưa tin về Việt Nam. Chỉ đưa tin thế giới quốc tế.
+- QUY TẮC "entity_query": Từ khóa tiếng Anh cụ thể miêu tả khoảnh khắc/nhân vật/sự cố hài hước hoặc độc lạ.
+- QUY TẮC BẮT BUỘC CHO "ai_prompt": PHẢI XÁC ĐỊNH RÕ CHỦ THỂ THỊ GIÁC CỐT LÕI (con vật gì, đồ vật gì, nhân vật gì). Prompt ngắn gọn, đơn giản (15-25 từ tiếng Anh), TRỌNG TÂM 100% VÀO CHỦ THỂ ĐÓ để làm hình ảnh minh họa chân thực. TUYỆT ĐỐI KHÔNG để từ địa danh (như Maryland, Florida) làm AI vẽ nhầm ra tên người!
+"""
+        else:
+            category_specific_rules = f"""
 ĐẶC THÙ BẮT BUỘC RIÊNG CHO BẢN TIN TIN LẠ & HÀI HƯỚC (CHUẨN YOUTUBE SHORTS - {max_topics} SỰ KIỆN ĐỘC LẠ & HÀI):
 - TIÊU CHUẨN TUYỂN CHỌN KHẮC KHE: Các sự kiện PHẢI THẬT SỰ ĐỘC LẠ hoặc THẬT SỰ HÀI HƯỚC (tình huống dở khóc dở cười, pha xử lý cồng kềnh, động vật tấu hài, tên trộm vụng về, pha fail kinh điển, hiện tượng kỳ dị bí ẩn, kỳ tích khó tin).
 - NGUỒN TIN ĐA KHU VỰC: Tích hợp các câu chuyện viral từ Trung Quốc (Douyin/Weibo), Thái Lan và Đông Nam Á (clip hài, động vật hoang dã oái oăm), Nga/Siberia (thời tiết khắc nghiệt, hố sụt kỳ bí), Nhật Bản/Hàn Quốc bên cạnh trào lưu mạng Âu - Mỹ.
@@ -2545,7 +2576,22 @@ def synthesize_news_script_with_gemini(
 - QUY TẮC BẮT BUỘC CHO "ai_prompt": PHẢI XÁC ĐỊNH RÕ CHỦ THỂ THỊ GIÁC CỐT LÕI (con vật gì, đồ vật gì, nhân vật gì). Prompt ngắn gọn, đơn giản (15-25 từ tiếng Anh), TRỌNG TÂM 100% VÀO CHỦ THỂ ĐÓ để làm hình ảnh minh họa chân thực. TUYỆT ĐỐI KHÔNG để từ địa danh (như Maryland, Florida) làm AI vẽ nhầm ra tên người (như vẽ ra một cô gái tên Mary thay vì con bò)!
 """
     elif category == "hope":
-        category_specific_rules = f"""
+        if max_topics == 1:
+            category_specific_rules = f"""
+ĐẶC THÙ BẮT BUỘC CHO SHORTS TIN VUI (CHUẨN YOUTUBE SHORTS - ĐÚNG 1 TIN NỔI BẬT NHẤT - ĐỘ DÀI CAO NHẤT 25 GIÂY):
+- CHỌN ĐÚNG 1 SỰ KIỆN DUY NHẤT: Chọn bước đột phá y khoa, phép màu sự sống hoặc kỳ tích môi trường ấn tượng và truyền cảm hứng nhất trong danh sách.
+- GIỚI HẠN THỜI LƯỢNG NGHIÊM NGẶT (TỐI ĐA 25 GIÂY):
+  + TỔNG TOÀN BỘ KỊCH BẢN TẤT CẢ PHÂN CẢNH TỪ 50 ĐẾN 58 TỪ TIẾNG VIỆT (BẮT BUỘC DƯỚI 60 TỪ ĐỂ ĐỌC DƯỚI 25 GIÂY).
+  + KỊCH BẢN GỒM ĐÚNG 3 PHÂN CẢNH (SCENE 0, 1, 2):
+    * SCENE 0 (HOOK TRUYỀN CẢM HỨNG): 10 - 12 từ. Nêu ngay tin vui hoặc bước ngoặt kỳ diệu nhất để khơi gợi hy vọng. TUYỆT ĐỐI CẤM chào hỏi rườm rà.
+    * SCENE 1 (CHI TIẾT ĐỘT PHÁ): 26 - 30 từ. Tường thuật chi tiết kỳ tích: các nhà khoa học/bác sĩ/tình nguyện viên đã làm được điều phi thường gì, kết quả chữa khỏi hoặc cứu sống ra sao.
+    * SCENE 2 (HY VỌNG & CTA): 12 - 14 từ. Đúc kết niềm tin ấm áp vào tương lai + Kêu gọi đăng ký kênh ("Đăng ký kênh để đón nhận năng lượng tích cực mỗi ngày!").
+- Tiêu đề: chỉ cần trả "hook_title" ở trên; hệ thống tự ghép đuôi " - {cfg.get('title_suffix_label', 'Tin Vui Thế Giới')} DD/MM/YYYY #Shorts".
+- TUYỆT ĐỐI CẤM đưa tin về Việt Nam. Chỉ đưa tin thế giới quốc tế.
+- QUY TẮC CHO "entity_query" VÀ "ai_prompt": Từ khóa tiếng Anh chuẩn xác về chủ thể y khoa/động vật/môi trường (ví dụ: 'cancer immunotherapy laboratory cells', 'coral reef restoration ocean divers', 'reforestation tree planting drones'). Tránh từ ngữ trừu tượng.
+"""
+        else:
+            category_specific_rules = f"""
 ĐẶC THÙ BẮT BUỘC RIÊNG CHO BẢN TIN TIN VUI (CHUẨN YOUTUBE SHORTS - {max_topics} ĐỘT PHÁ HY VỌNG):
 - NGUYÊN TẮC PHÂN BỔ TRỌNG TÂM:
   1. TẬP TRUNG NHIỀU NHẤT VÀO:
@@ -2757,6 +2803,18 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
     # Safety net: the hook scene must never open with a greeting.
     if scenes:
         scenes[0].text = strip_leading_greeting(scenes[0].text)
+
+    # Enforce strict word count budget for 1-topic Shorts (<= 25s duration)
+    if category in ("viral", "hope") and max_topics == 1:
+        total_words = sum(len(sc.text.split()) for sc in scenes)
+        if total_words > 60:
+            logger.info("Shorts script total words (%d) exceeds 60 words. Trimming slightly to maintain <= 25s duration.", total_words)
+            if len(scenes) >= 2 and len(scenes[1].text.split()) > 30:
+                words = scenes[1].text.split()
+                scenes[1].text = " ".join(words[:28]).rstrip(",;-") + "."
+            if len(scenes) >= 3 and len(scenes[2].text.split()) > 14:
+                words = scenes[2].text.split()
+                scenes[2].text = " ".join(words[:13]).rstrip(",;-") + "."
 
     hook_title = str(parsed.get("hook_title") or "").strip()
     if not hook_title:
@@ -3135,7 +3193,71 @@ def fallback_offline_news_script(
         vi_first = translate_text_en_to_vi(_clean_headline(selected[0].title))
 
     if norm_cat == "viral":
-        # Viral YouTube Shorts Format: Fast hook, punchy scenes, quick CTA
+        if len(selected) == 1:
+            # Single Standout Viral Story (<= 25s duration, exactly 3 scenes, ~50 words)
+            item = selected[0]
+            clean_full_headline = re.sub(r"\s*[-|–]\s*[A-Za-z0-9\s\.]+$", "", item.title).strip()
+            clean_full_headline = re.sub(
+                r"^(live updates:?|breaking:?|watch:?|video:?|update:?)\s*", "", clean_full_headline, flags=re.IGNORECASE
+            ).strip()
+            vi_title = translate_text_en_to_vi(clean_full_headline)
+            vi_titles.append(vi_title)
+            cooked_facts = cook_summary_into_vietnamese(item, vi_title)
+            fact_words = cooked_facts.split()
+            core_narrative = " ".join(fact_words[:26]).rstrip(",;-") + "." if len(fact_words) > 26 else cooked_facts
+            core_sub = extract_core_visual_subject(clean_full_headline)
+            ai_prompt_val = f"photorealistic news photography of {core_sub}, authentic real-world news photo style"
+
+            # Scene 0: Hook (10-12 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=0,
+                    text=f"Khoảnh khắc khó tin vừa gây chấn động mạng xã hội: {vi_title}!",
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
+                    has_transition_cue=False,
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                )
+            )
+            # Scene 1: Core Story (25-30 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=1,
+                    text=core_narrative,
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
+                    has_transition_cue=True,
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                )
+            )
+            # Scene 2: Outro & CTA (12-14 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=2,
+                    text="Một sự cố dở khóc dở cười! Đăng ký kênh để đón xem tin độc lạ mỗi ngày.",
+                    entity_query="Social media creator smartphone studio",
+                    ai_prompt="cinematic 9:16 smartphone screen with subscribe button and glowing social media likes",
+                    has_transition_cue=True,
+                    image_url="",
+                    social_platform="x",
+                )
+            )
+            title = build_hook_title(vi_title, norm_cat, now_dt)
+            return assert_and_sanitize_no_vietnam_content(
+                DailyNewsDigest(
+                    digest_id=uuid.uuid4().hex[:8],
+                    title=title,
+                    summary_lead=f"Câu chuyện độc lạ gây bão mạng xã hội ngày {date_str}: {vi_title}.",
+                    hashtags=cfg.get("hashtags", "#Shorts #doclathegioi #tinhot #xuhuong"),
+                    scenes=scenes,
+                    thumbnail_hook=sanitize_thumbnail_hook(vi_title, norm_cat),
+                    ticker_summary=vi_title,
+                )
+            )
+
+        # Multi-topic Viral YouTube Shorts Format
         if len(selected) <= 3:
             intro_text = (
                 f"Top {len(selected)} tin độc lạ gây bão rạng sáng nay: {vi_first}. Cùng khám phá ngay sau đây!"
@@ -3220,7 +3342,71 @@ def fallback_offline_news_script(
         )
 
     elif norm_cat == "hope":
-        # Hope YouTube Shorts Format: Inspiring hook, punchy scenes, uplifting outro
+        if len(selected) == 1:
+            # Single Standout Hope Story (<= 25s duration, exactly 3 scenes, ~50 words)
+            item = selected[0]
+            clean_full_headline = re.sub(r"\s*[-|–]\s*[A-Za-z0-9\s\.]+$", "", item.title).strip()
+            clean_full_headline = re.sub(
+                r"^(live updates:?|breaking:?|watch:?|video:?|update:?)\s*", "", clean_full_headline, flags=re.IGNORECASE
+            ).strip()
+            vi_title = translate_text_en_to_vi(clean_full_headline)
+            vi_titles.append(vi_title)
+            cooked_facts = cook_summary_into_vietnamese(item, vi_title)
+            fact_words = cooked_facts.split()
+            core_narrative = " ".join(fact_words[:26]).rstrip(",;-") + "." if len(fact_words) > 26 else cooked_facts
+            core_sub = extract_core_visual_subject(clean_full_headline)
+            ai_prompt_val = f"cinematic news photography of {core_sub}, clean bright futuristic lighting, uplifting science aesthetic"
+
+            # Scene 0: Hook (10-12 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=0,
+                    text=f"Một tin vui thắp sáng hy vọng vừa được ghi nhận: {vi_title}!",
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
+                    has_transition_cue=False,
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                )
+            )
+            # Scene 1: Core Story (25-30 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=1,
+                    text=core_narrative,
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
+                    has_transition_cue=True,
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                )
+            )
+            # Scene 2: Outro & CTA (12-14 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=2,
+                    text="Kỳ tích mở ra tương lai tươi sáng! Đăng ký kênh đón nhận tin vui mỗi ngày.",
+                    entity_query="Futuristic clean technology globe sunrise",
+                    ai_prompt="cinematic vertical 9:16 sunrise over thriving green planet Earth, inspiring future, glowing subscribe button",
+                    has_transition_cue=True,
+                    image_url="",
+                    social_platform="x",
+                )
+            )
+            title = build_hook_title(vi_title, norm_cat, now_dt)
+            return assert_and_sanitize_no_vietnam_content(
+                DailyNewsDigest(
+                    digest_id=uuid.uuid4().hex[:8],
+                    title=title,
+                    summary_lead=f"Kỳ tích và bước tiến truyền cảm hứng ngày {date_str}: {vi_title}.",
+                    hashtags=cfg.get("hashtags", "#Shorts #tinvui #ykhoa #susong #moitruong #hyvong #khoahoc"),
+                    scenes=scenes,
+                    thumbnail_hook=sanitize_thumbnail_hook(vi_title, norm_cat),
+                    ticker_summary=vi_title,
+                )
+            )
+
+        # Multi-topic Hope YouTube Shorts Format
         if len(selected) <= 3:
             intro_text = (
                 f"Top {len(selected)} tin vui lớn rạng sáng nay: {vi_first}. Cùng đón nhận những năng lượng tích cực ngay sau đây!"
@@ -4570,12 +4756,12 @@ def produce_daily_news_video(
     norm_cat = normalize_category(category)
     cfg = get_category_config(norm_cat)
 
-    # Viral and Hope categories target YouTube Shorts: vertical 9:16 and rich compilation (default 8/7 topics)
+    # Viral and Hope categories target YouTube Shorts: vertical 9:16 and focus on 1 single standout story (<= 25s)
     # All other news categories (world, war, tech, sports) are standard long-form broadcasts and MUST strictly be 16:9
     if norm_cat in ("viral", "hope"):
         aspect_ratio = "9:16"
-        if not max_topics or max_topics <= 0 or max_topics in (7, 8):
-            max_topics = 3
+        if not max_topics or max_topics <= 0 or max_topics in (3, 7, 8):
+            max_topics = 1
     else:
         aspect_ratio = "16:9"
 
