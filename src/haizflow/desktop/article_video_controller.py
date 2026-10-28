@@ -157,7 +157,7 @@ class ArticleVideoController(QObject):
         self._youtube_upload_progress: int = 0
         self._youtube_upload_message: str = ""
         self._youtube_video_url: str = ""
-        self._youtube_privacy: str = "public"
+        self._youtube_privacy: str = "private"
 
         self._status: str = "idle"  # idle, analyzing, generating_images, rendering_video, done, error
         self._progress_percent: int = 0

@@ -142,7 +142,7 @@ class DailyNewsController(QObject):
             pass
         self._auto_upload_youtube: bool = has_yt
         self._auto_upload_facebook: bool = False
-        self._youtube_privacy: str = "public"
+        self._youtube_privacy: str = "private"
         self._auto_add_to_playlist: bool = True
         self._youtube_playlist_tin_moi: str = "Bản tin thế giới"
         self._youtube_playlist_tin_nong: str = "Bản tin thế giới"
@@ -206,7 +206,7 @@ class DailyNewsController(QObject):
                     pass
                 self._auto_upload_youtube = bool(data.get("auto_upload_youtube", has_yt))
                 self._auto_upload_facebook = bool(data.get("auto_upload_facebook", False))
-                self._youtube_privacy = str(data.get("youtube_privacy", "public"))
+                self._youtube_privacy = str(data.get("youtube_privacy", "private"))
                 self._auto_add_to_playlist = bool(data.get("auto_add_to_playlist", True))
                 self._youtube_playlist_tin_moi = str(data.get("youtube_playlist_tin_moi", "Bản tin thế giới"))
                 self._youtube_playlist_tin_nong = str(data.get("youtube_playlist_tin_nong", "Bản tin thế giới"))
@@ -457,7 +457,7 @@ class DailyNewsController(QObject):
     @Slot(str)
     def setYoutubePrivacy(self, val: str) -> None:
         if self._youtube_privacy != val:
-            self._youtube_privacy = val if val in ("public", "unlisted", "private") else "public"
+            self._youtube_privacy = val if val in ("public", "unlisted", "private") else "private"
             self.youtubePrivacyChanged.emit()
             self._save_settings()
 
@@ -626,7 +626,7 @@ class DailyNewsController(QObject):
             self._auto_upload_youtube = bool(auto_upload_youtube)
             self.autoUploadYoutubeChanged.emit()
 
-        priv = youtube_privacy if youtube_privacy in ("public", "unlisted", "private") else "public"
+        priv = youtube_privacy if youtube_privacy in ("public", "unlisted", "private") else "private"
         if self._youtube_privacy != priv:
             self._youtube_privacy = priv
             self.youtubePrivacyChanged.emit()

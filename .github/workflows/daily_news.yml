@@ -27,6 +27,15 @@ on:
         required: true
         default: true
         type: boolean
+      youtube_privacy:
+        description: 'Chế độ hiển thị YouTube (private: riêng tư, unlisted: không công khai, public: công khai)'
+        required: true
+        default: 'private'
+        type: choice
+        options:
+          - 'private'
+          - 'unlisted'
+          - 'public'
       quick_test:
         description: 'Chế độ test nhanh (Mock data xuất video trong vài giây)'
         required: false
@@ -112,9 +121,12 @@ jobs:
             TEST_FLAG="--quick-test"
           fi
           
+          PRIV_FLAG="--privacy ${{ github.event.inputs.youtube_privacy || 'private' }}"
+          
           python scripts/ci_run_daily_news.py \
             --category "$INPUT_CAT" \
             $YT_FLAG \
+            $PRIV_FLAG \
             $TEST_FLAG
 
       - name: Save Published News History Cache

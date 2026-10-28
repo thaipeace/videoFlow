@@ -105,7 +105,7 @@ def setup_ci_environment() -> None:
             "bgm_enabled": True,
             "bgm_volume": 0.08,
             "auto_upload_youtube": True,
-            "youtube_privacy": "public",
+            "youtube_privacy": "private",
             "auto_add_to_playlist": True,
             "youtube_playlist_tin_moi": "Bản tin thế giới",
             "youtube_playlist_hope": "Bản tin thế giới",
@@ -140,6 +140,12 @@ def main() -> int:
     parser.add_argument("--max-topics", type=int, default=None)
     parser.add_argument("--youtube", action="store_true", default=True, help="Upload to YouTube after generation.")
     parser.add_argument("--no-youtube", dest="youtube", action="store_false")
+    parser.add_argument(
+        "--privacy",
+        choices=["private", "unlisted", "public"],
+        default="private",
+        help="YouTube privacy status (private, unlisted, public). Default: private.",
+    )
     parser.add_argument("--quick-test", action="store_true", help="Run fast dry-run with mock data.")
     args = parser.parse_args()
 
@@ -200,6 +206,8 @@ def main() -> int:
         aspect_ratio,
         "--max-topics",
         str(max_topics),
+        "--privacy",
+        args.privacy,
     ]
 
     if args.youtube:

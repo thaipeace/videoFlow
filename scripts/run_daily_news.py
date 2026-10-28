@@ -180,6 +180,12 @@ def main() -> int:
         help="Tự động đăng lên YouTube (mặc định: lấy theo cài đặt HaizFlow).",
     )
     parser.add_argument(
+        "--privacy",
+        choices=["private", "unlisted", "public"],
+        default=None,
+        help="Chế độ hiển thị YouTube: private, unlisted, public (mặc định: private).",
+    )
+    parser.add_argument(
         "--prefer-real-images",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -191,15 +197,14 @@ def main() -> int:
 
     # Load social upload settings
     from haizflow.config import RUNTIME_DATA_DIR
-    settings_file = Path(RUNTIME_DATA_DIR) / "daily_news_settings.json"
     cfg_auto_yt = False
-    yt_privacy = "public"
+    yt_privacy = args.privacy or "private"
     s_data: dict = {}
     if settings_file.is_file():
         try:
             s_data = json.loads(settings_file.read_text(encoding="utf-8"))
             cfg_auto_yt = bool(s_data.get("auto_upload_youtube", False))
-            yt_privacy = str(s_data.get("youtube_privacy", "public"))
+            yt_privacy = args.privacy or str(s_data.get("youtube_privacy", "private"))
         except Exception:
             pass
 
@@ -281,7 +286,7 @@ def main() -> int:
             try:
                 s_data = json.loads(settings_file.read_text(encoding="utf-8"))
                 cfg_auto_yt = bool(s_data.get("auto_upload_youtube", False))
-                yt_privacy = str(s_data.get("youtube_privacy", "public"))
+                yt_privacy = args.privacy or str(s_data.get("youtube_privacy", "private"))
             except Exception as e:
                 logger.warning("Could not re-read settings file: %s", e)
 
