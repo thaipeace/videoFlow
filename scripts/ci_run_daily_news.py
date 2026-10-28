@@ -197,21 +197,37 @@ def main() -> int:
 
     res = subprocess.run(cmd, env=env)
 
-    # Locate and sync recent social_publish_manifest.json
+    # Locate the most recent social_publish_manifest.json.
+    # daily_news.py writes to: runtime/data/daily_news/{norm_cat}_{date_str}/social_publish_manifest.json
+    # We search both locations for backward compatibility.
     manifest_data = {}
+    search_roots = [
+        PROJECT_ROOT / "runtime" / "data" / "daily_news",  # correct location (daily_news.py)
+        PROJECT_ROOT / "runtime" / "daily_news",           # legacy fallback
+    ]
+    candidate_manifests = []
+    for search_root in search_roots:
+        if search_root.is_dir():
+            candidate_manifests.extend(search_root.glob("*/social_publish_manifest.json"))
     candidate_manifests = sorted(
-        (PROJECT_ROOT / "runtime" / "daily_news").glob("*/social_publish_manifest.json"),
+        candidate_manifests,
         key=lambda p: p.stat().st_mtime,
         reverse=True,
     )
     if candidate_manifests:
         try:
             manifest_data = json.loads(candidate_manifests[0].read_text(encoding="utf-8"))
-            (PROJECT_ROOT / "runtime" / "data" / "social_publish_manifest.json").write_text(
+            logger.info("Loaded manifest from: %s", candidate_manifests[0])
+            # Sync a copy to the well-known central path
+            central_manifest = PROJECT_ROOT / "runtime" / "data" / "social_publish_manifest.json"
+            central_manifest.parent.mkdir(parents=True, exist_ok=True)
+            central_manifest.write_text(
                 json.dumps(manifest_data, indent=2, ensure_ascii=False), encoding="utf-8"
             )
         except Exception as sync_exc:
             logger.warning("Could not sync central social_publish_manifest.json: %s", sync_exc)
+    else:
+        logger.warning("No social_publish_manifest.json found after run (searched: %s)", search_roots)
 
     # Write execution report to GitHub Step Summary
     summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
