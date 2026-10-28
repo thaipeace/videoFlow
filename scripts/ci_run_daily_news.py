@@ -251,9 +251,7 @@ def main() -> int:
             else:
                 summary_lines.append("ℹ️ *Chế độ không đăng tải YouTube (--no-youtube) được kích hoạt.*")
 
-            Path(summary_file).write_text("
-".join(summary_lines) + "
-", encoding="utf-8")
+            Path(summary_file).write_text("\n".join(summary_lines) + "\n", encoding="utf-8")
         except Exception as sum_exc:
             logger.warning("Could not write GITHUB_STEP_SUMMARY: %s", sum_exc)
 
