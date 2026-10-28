@@ -136,7 +136,7 @@ jobs:
         env:
           GDRIVE_WEBHOOK_URL: ${{ secrets.GDRIVE_WEBHOOK_URL || 'https://script.google.com/macros/s/AKfycbzVrVvGB0HAFhO9GgH-g5EP_iPfoFjZlNdhX_tXhvu-bfeznog8WabsX8nYj2SwbvOd/exec' }}
         run: |
-          python scripts/upload_to_gdrive.py --dir runtime/data/editorial_scripts --limit 5 || true
+          python scripts/upload_to_gdrive.py --dir runtime/data/editorial_scripts --limit 1 || true
 
       - name: Upload Logs & Social Publish Manifest
         if: always()

@@ -4490,6 +4490,11 @@ def sync_editorial_script_to_gdrive(
         if not p.is_file():
             return False
 
+        sentinel = p.with_suffix(p.suffix + ".gdrive_uploaded")
+        if sentinel.is_file():
+            logger.info("Google Drive Sync: '%s' already uploaded. Skipping duplicate.", p.name)
+            return True
+
         content = p.read_text(encoding="utf-8")
         payload = json.dumps({"filename": p.name, "content": content}, ensure_ascii=False).encode("utf-8")
 
@@ -4512,6 +4517,10 @@ def sync_editorial_script_to_gdrive(
                     p.name,
                     data.get("fileId", "unknown"),
                 )
+                try:
+                    sentinel.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                except Exception:
+                    pass
                 return True
             else:
                 logger.warning("Google Drive Sync returned non-success for '%s': %s", p.name, data)

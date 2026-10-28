@@ -3,6 +3,8 @@
 
 Uploads editorial scripts, Proof-of-Work texts, or manifests to Google Drive
 via the Google Apps Script Webhook. Zero external dependencies (uses standard library urllib).
+Features strict deduplication tracking using sentinel files (.gdrive_uploaded) to prevent
+duplicate uploads.
 """
 
 from __future__ import annotations
@@ -36,19 +38,35 @@ def get_webhook_url(custom_url: Optional[str] = None) -> str:
     return DEFAULT_WEBHOOK_URL
 
 
+def get_sentinel_path(file_path: Path) -> Path:
+    """Return the companion sentinel path indicating successful upload."""
+    return file_path.with_suffix(file_path.suffix + ".gdrive_uploaded")
+
+
 def upload_text_file(
     file_path: Path | str,
     webhook_url: Optional[str] = None,
     custom_filename: Optional[str] = None,
-    max_retries: int = 3,
+    max_retries: int = 2,
+    force: bool = False,
 ) -> Optional[Dict[str, Any]]:
-    """Upload a single text file to Google Drive via Apps Script Webhook."""
+    """Upload a single text file to Google Drive via Apps Script Webhook with deduplication."""
     p = Path(file_path).resolve()
     if not p.is_file():
         logger.error("File does not exist: %s", p)
         return None
 
     filename = custom_filename or p.name
+    sentinel = get_sentinel_path(p)
+
+    # Deduplication check
+    if not force and sentinel.is_file():
+        logger.info("⏩ Script '%s' was already uploaded to Google Drive. Skipping duplicate.", filename)
+        try:
+            return json.loads(sentinel.read_text(encoding="utf-8"))
+        except Exception:
+            return {"status": "skipped", "fileId": "cached", "filename": filename}
+
     try:
         content = p.read_text(encoding="utf-8")
     except Exception as exc:
@@ -78,6 +96,10 @@ def upload_text_file(
                 if data.get("status") == "success":
                     file_id = data.get("fileId", "unknown")
                     logger.info("✅ SUCCESS: Uploaded '%s' -> Google Drive (File ID: %s)", filename, file_id)
+                    try:
+                        sentinel.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+                    except Exception as sent_err:
+                        logger.warning("Could not write upload sentinel: %s", sent_err)
                     return data
                 else:
                     logger.warning("Attempt %d returned status: %s", attempt, data)
@@ -97,23 +119,34 @@ def upload_directory_files(
     directory: Path | str,
     pattern: str = "*.txt",
     webhook_url: Optional[str] = None,
-    limit: Optional[int] = None,
+    limit: Optional[int] = 1,
+    force: bool = False,
 ) -> List[Dict[str, Any]]:
-    """Upload matching text files from a directory, sorted newest first."""
+    """Upload matching text files from a directory, sorted newest first, skipping already uploaded files."""
     d = Path(directory).resolve()
     if not d.is_dir():
         logger.warning("Directory not found: %s", d)
         return []
 
-    files = sorted(d.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True)
-    if limit is not None and limit > 0:
-        files = files[:limit]
+    # Find candidate files
+    all_files = sorted(d.glob(pattern), key=lambda f: f.stat().st_mtime, reverse=True)
+    if not force:
+        pending_files = [f for f in all_files if not get_sentinel_path(f).is_file()]
+    else:
+        pending_files = all_files
 
-    logger.info("Found %d file(s) in %s matching '%s'", len(files), d, pattern)
+    if not pending_files:
+        logger.info("All matching file(s) in %s have already been uploaded to Google Drive. Skipping.", d)
+        return []
+
+    if limit is not None and limit > 0:
+        pending_files = pending_files[:limit]
+
+    logger.info("Found %d pending file(s) in %s to upload (out of %d total)", len(pending_files), d, len(all_files))
     uploaded = []
-    for f in files:
-        res = upload_text_file(f, webhook_url=webhook_url)
-        if res:
+    for f in pending_files:
+        res = upload_text_file(f, webhook_url=webhook_url, force=force)
+        if res and res.get("status") == "success":
             uploaded.append(res)
         time.sleep(0.5)
 
@@ -121,22 +154,23 @@ def upload_directory_files(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Upload files to Google Drive via Webhook")
+    parser = argparse.ArgumentParser(description="Upload files to Google Drive via Webhook with Deduplication")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--file", type=str, help="Upload a specific text file.")
     group.add_argument("--dir", type=str, help="Upload files from a directory.")
     parser.add_argument("--pattern", type=str, default="*.txt", help="Filename pattern for --dir (default: *.txt)")
-    parser.add_argument("--limit", type=int, default=10, help="Maximum number of files to upload from --dir.")
+    parser.add_argument("--limit", type=int, default=1, help="Maximum number of new files to upload from --dir (default: 1).")
     parser.add_argument("--url", type=str, default=None, help="Custom Webhook URL.")
+    parser.add_argument("--force", action="store_true", help="Force re-upload even if sentinel file exists.")
 
     args = parser.parse_args()
 
     if args.file:
-        res = upload_text_file(args.file, webhook_url=args.url)
+        res = upload_text_file(args.file, webhook_url=args.url, force=args.force)
         return 0 if res else 1
     elif args.dir:
-        res_list = upload_directory_files(args.dir, pattern=args.pattern, webhook_url=args.url, limit=args.limit)
-        return 0 if res_list else 1
+        res_list = upload_directory_files(args.dir, pattern=args.pattern, webhook_url=args.url, limit=args.limit, force=args.force)
+        return 0
 
     return 0
 
