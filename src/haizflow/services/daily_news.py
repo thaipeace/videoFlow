@@ -871,6 +871,7 @@ class DailyNewsScene:
     has_transition_cue: bool = False
     image_url: str = ""
     social_platform: str = "x"
+    source: str = ""  # Human-readable source name (e.g. 'Bored Panda', 'BBC News') for the source frame badge
 
 
 @dataclass
@@ -2107,6 +2108,18 @@ def fetch_world_news_rss(
                 if page_img and not it.image_url and not is_placeholder_image_url(page_img):
                     it.image_url = page_img
 
+    # Viral category: REQUIRE a real source image — discard stories without one.
+    # Viral content depends on authentic visuals; AI-generated images break authenticity.
+    if norm_cat == "viral":
+        before_count = len(clustered_items)
+        clustered_items = [it for it in clustered_items if it.image_url and not is_placeholder_image_url(it.image_url)]
+        after_count = len(clustered_items)
+        if before_count != after_count:
+            logger.info(
+                "Viral image filter: discarded %d/%d items with no source image. %d remain.",
+                before_count - after_count, before_count, after_count,
+            )
+
     logger.info("Clustered and fetched %d distinct international news topics with deep article details.", len(clustered_items))
     return clustered_items
 
@@ -3218,6 +3231,7 @@ def fallback_offline_news_script(
                     has_transition_cue=False,
                     image_url=item.image_url,
                     social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             # Scene 1: Core Story (25-30 words)
@@ -3230,6 +3244,7 @@ def fallback_offline_news_script(
                     has_transition_cue=True,
                     image_url=item.image_url,
                     social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             # Scene 2: Outro & CTA (12-14 words)
@@ -3242,6 +3257,7 @@ def fallback_offline_news_script(
                     has_transition_cue=True,
                     image_url="",
                     social_platform="x",
+                    source="",
                 )
             )
             title = build_hook_title(vi_title, norm_cat, now_dt)
@@ -3311,6 +3327,7 @@ def fallback_offline_news_script(
                     has_transition_cue=True,
                     image_url=item.image_url,
                     social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             sc_idx += 1
@@ -3367,6 +3384,7 @@ def fallback_offline_news_script(
                     has_transition_cue=False,
                     image_url=item.image_url,
                     social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             # Scene 1: Core Story (25-30 words)
@@ -3379,6 +3397,7 @@ def fallback_offline_news_script(
                     has_transition_cue=True,
                     image_url=item.image_url,
                     social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             # Scene 2: Outro & CTA (12-14 words)
@@ -3391,6 +3410,7 @@ def fallback_offline_news_script(
                     has_transition_cue=True,
                     image_url="",
                     social_platform="x",
+                    source="",
                 )
             )
             title = build_hook_title(vi_title, norm_cat, now_dt)
@@ -3459,6 +3479,7 @@ def fallback_offline_news_script(
                     has_transition_cue=True,
                     image_url=item.image_url,
                     social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             sc_idx += 1
@@ -3602,11 +3623,25 @@ def create_social_post_visual(
     headline: str,
     author_name: str = "",
     author_handle: str = "",
+    source_name: str = "",
     image_path: Optional[str] = None,
     dest_path: Path = Path("scene.jpg"),
     aspect_ratio: AspectRatio = "9:16",
 ) -> Path:
-    """Generate an authentic social media screenshot card (Facebook, Instagram, X) for video scenes."""
+    """Generate an authentic social media screenshot card (Facebook, Instagram, X) for video scenes.
+
+    Args:
+        platform: Social platform key (e.g. 'reddit', 'x', 'facebook', etc.)
+        headline: Main text content to display on the card.
+        author_name: Override displayed author name. Defaults to 'Tin Nóng <Platform>'.
+        author_handle: Override handle/sub-line text. Defaults to a platform-specific placeholder.
+        source_name: Real source domain name (e.g. 'BoredPanda', 'Oddity Central', 'BBC').
+                     When provided, it is shown on the badge instead of the social platform name,
+                     so the card accurately credits the original publisher.
+        image_path: Optional path to a local photo to embed inside the card.
+        dest_path: Output file path for the rendered JPEG.
+        aspect_ratio: '9:16' (Shorts vertical) or '16:9' (landscape).
+    """
     dest_path = Path(dest_path).resolve()
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     target_w, target_h = resolution_for_aspect_ratio(aspect_ratio)
@@ -3642,6 +3677,24 @@ def create_social_post_visual(
         plat_name = "X (Twitter)"
         plat_color = (29, 155, 240)
         default_handle = author_handle or "@TrendingWorld · Vừa đăng"
+
+    # If a real source name is provided, use it on the badge to correctly credit the publisher.
+    # This replaces the generic social platform name (e.g. "X (Twitter)") with the actual site
+    # the story came from (e.g. "Bored Panda", "Oddity Central", "BBC News", etc.)
+    # The platform colour is preserved for visual style continuity.
+    _src = (source_name or "").strip()
+    if _src and _src.lower() not in ("x", "x (twitter)", "twitter", "social media", ""):
+        # Derive a compact display name from the source string (strip Vietnamese prefixes)
+        _display_src = _src
+        for _prefix in ("chuyên trang ", "trang tin ", "hãng tin ", "hãng thông tấn ",
+                         "tạp chí ", "kênh thể thao ", "báo ", "kênh truyền hình ",
+                         "mạng xã hội ", "đài phát thanh ", "mục "):
+            if _display_src.lower().startswith(_prefix):
+                _display_src = _display_src[len(_prefix):]
+                break
+        badge_label = _display_src[:28]  # max 28 chars to fit in badge
+    else:
+        badge_label = plat_name
 
     canvas = Image.new("RGB", (target_w, target_h), (12, 16, 24))
 
@@ -3729,18 +3782,18 @@ def create_social_post_visual(
         width=2,
     )
 
-    # Platform badge
-    badge_w = int(target_w * 0.16)
+    # Platform / Source badge — shows the real publisher name when known, otherwise platform name
+    badge_w = int(target_w * 0.22)  # slightly wider to accommodate longer source names
     badge_h = int(target_h * 0.024) if aspect_ratio == "9:16" else 36
     draw.rounded_rectangle(
         [card_x + 28, card_y + 24, card_x + 28 + badge_w, card_y + 24 + badge_h],
         radius=8,
         fill=plat_color,
     )
-    draw.text((card_x + 40, card_y + 28), plat_name, fill=(255, 255, 255), font=font_badge)
+    draw.text((card_x + 40, card_y + 28), badge_label, fill=(255, 255, 255), font=font_badge)
 
     # Author
-    author_disp = author_name or f"Tin Nóng {plat_name}"
+    author_disp = author_name or f"Nguồn: {badge_label}"
     draw.text((card_x + 36 + badge_w + 16, card_y + 24), author_disp, fill=(255, 255, 255), font=font_author)
     draw.text((card_x + 36 + badge_w + 16, card_y + 60), default_handle, fill=(148, 163, 184), font=font_sub)
 
@@ -3825,34 +3878,19 @@ def prepare_scene_illustrations(
                 except Exception as dl_err:
                     logger.debug("Direct photo fetch failed for scene %d: %s", idx, dl_err)
 
-            # Tier 2: Contextual photorealistic AI generation (precisely depicting the strange/funny scene narrative)
-            # NEVER query Wikimedia Commons for viral/funny memes to prevent irrelevant historical archival mismatches.
+            # Tier 2: For viral, NEVER use AI-generated images — they are irrelevant to the real event.
+            # Only authentic source photos are accepted. If none found, render a text-only card.
+            # (Wikimedia Commons is also skipped — archival images do not match viral humor/shock content.)
             if not photo_found:
-                prompt_to_use = ground_prompt_to_core_subject(
-                    prompt=scene.ai_prompt,
-                    fallback_headline=scene.entity_query or scene.text,
-                    category=category,
+                logger.info(
+                    "No authentic source photo for viral scene %d — will render text-only social card (no AI fallback).", idx
                 )
-                try:
-                    logger.info("Generating grounded AI visual for viral scene %d: %s", idx, prompt_to_use[:70])
-                    generated_path = generate_scene_image(
-                        prompt=prompt_to_use,
-                        destination_path=temp_raw,
-                        aspect_ratio=aspect_ratio,
-                        style="cinematic",
-                        allow_free_online=True,
-                    )
-                    if generated_path and Path(generated_path).is_file() and not is_image_mostly_blank(temp_raw):
-                        photo_found = True
-                        source_type = "ai_generated"
-                        logger.info("Generated contextual AI image for viral scene %d successfully", idx)
-                except Exception as ai_err:
-                    logger.warning("AI image generation failed for viral scene %d: %s", idx, ai_err)
 
-            # Generate social visual: if photo_found embeds photo; if not, renders clean text card
+            # Generate social visual: if photo_found embeds real source photo; otherwise text-only card
             create_social_post_visual(
                 platform=scene.social_platform,
                 headline=scene.text,
+                source_name=getattr(scene, "source", ""),
                 image_path=str(temp_raw.resolve()) if photo_found else None,
                 dest_path=img_dest,
                 aspect_ratio=aspect_ratio,
