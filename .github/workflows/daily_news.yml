@@ -3,13 +3,13 @@ name: Automated Daily News Broadcast Pipeline
 on:
   schedule:
     # 07:30 VN (UTC+7) = 00:30 UTC -> Tin Mới (Thế giới + Thể thao 16:9)
-    - cron: '30 0 * * *'
+    #- cron: '30 0 * * *'
     # 11:30 VN (UTC+7) = 04:30 UTC -> Shorts Tin Vui (9:16)
-    - cron: '30 4 * * *'
+    #- cron: '30 4 * * *'
     # 12:00 VN (UTC+7) = 05:00 UTC -> Shorts Tin Độc Lạ (9:16)
-    - cron: '0 5 * * *'
+    #- cron: '0 5 * * *'
     # 17:30 VN (UTC+7) = 10:30 UTC -> Tin Nóng (Chiến sự + Công nghệ 16:9)
-    - cron: '30 10 * * *'
+    #- cron: '30 10 * * *'
   workflow_dispatch:
     inputs:
       category:
