@@ -368,9 +368,24 @@ def main() -> int:
                             manifest["youtube_playlist_id"] = yt_res["playlist"].get("playlist_id", "")
                     manifest_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
                 else:
-                    logger.warning("  ! Chưa kết nối tài khoản Google YouTube (không có token).")
+                    logger.warning("==================================================================")
+                    logger.warning("⚠️  CẢNH BÁO: KHÔNG THỂ ĐĂNG LÊN YOUTUBE!")
+                    logger.warning("   Lý do: Chưa có OAuth Token (không tìm thấy youtube_token.json hoặc secret YOUTUBE_TOKEN_JSON).")
+                    logger.warning("   -> Vui lòng kiểm tra Secret 'YOUTUBE_TOKEN_JSON' trên GitHub Repository Settings.")
+                    logger.warning("==================================================================")
+                    manifest["youtube_published"] = False
+                    manifest["youtube_error"] = "Chưa kết nối tài khoản Google YouTube (thiếu YOUTUBE_TOKEN_JSON)."
+                    manifest_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
             except Exception as yt_err:
-                logger.exception("  ! Đăng YouTube thất bại: %s", yt_err)
+                logger.error("==================================================================")
+                logger.error("❌  ĐĂNG TẢI YOUTUBE THẤT BẠI: %s", yt_err)
+                logger.error("   -> Nếu lỗi 'invalid_grant' hoặc 'Token has been expired or revoked':")
+                logger.error("      OAuth Token của Google đã hết hạn (đặc biệt khi Google App ở chế độ 'Testing').")
+                logger.error("      Cần tạo lại token mới và cập nhật vào GitHub Secret 'YOUTUBE_TOKEN_JSON'.")
+                logger.error("==================================================================")
+                manifest["youtube_published"] = False
+                manifest["youtube_error"] = str(yt_err)
+                manifest_file.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
         print("=" * 70 + "\n")
         return 0

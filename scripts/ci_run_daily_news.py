@@ -121,6 +121,16 @@ def setup_ci_environment() -> None:
         settings_file.write_text(json.dumps(default_settings, indent=2, ensure_ascii=False), encoding="utf-8")
         logger.info("Initialized default daily_news_settings.json.")
 
+    has_token = bool(token_env) or token_file.is_file()
+    has_secret = bool(secret_env) or secret_file.is_file()
+    has_gemini = bool(os.environ.get("GEMINI_API_KEY", "").strip())
+    logger.info("------------------------------------------------------------------")
+    logger.info("CI Environment Credentials Check:")
+    logger.info("  • GEMINI_API_KEY            : %s", "CONFIGURED" if has_gemini else "MISSING (Will use offline template fallback)")
+    logger.info("  • YOUTUBE_TOKEN_JSON        : %s", "CONFIGURED" if has_token else "MISSING (Cannot upload to YouTube!)")
+    logger.info("  • YOUTUBE_CLIENT_SECRET_JSON: %s", "CONFIGURED" if has_secret else "MISSING (Needed to refresh expired tokens)")
+    logger.info("------------------------------------------------------------------")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="HaizFlow CI / Cloud Runner for Daily News")
@@ -186,6 +196,66 @@ def main() -> int:
     env["PYTHONIOENCODING"] = "utf-8"
 
     res = subprocess.run(cmd, env=env)
+
+    # Locate and sync recent social_publish_manifest.json
+    manifest_data = {}
+    candidate_manifests = sorted(
+        (PROJECT_ROOT / "runtime" / "daily_news").glob("*/social_publish_manifest.json"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    if candidate_manifests:
+        try:
+            manifest_data = json.loads(candidate_manifests[0].read_text(encoding="utf-8"))
+            (PROJECT_ROOT / "runtime" / "data" / "social_publish_manifest.json").write_text(
+                json.dumps(manifest_data, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+        except Exception as sync_exc:
+            logger.warning("Could not sync central social_publish_manifest.json: %s", sync_exc)
+
+    # Write execution report to GitHub Step Summary
+    summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+    if summary_file:
+        try:
+            yt_published = manifest_data.get("youtube_published", False)
+            yt_url = manifest_data.get("youtube_url", "")
+            yt_error = manifest_data.get("youtube_error", "")
+            title = manifest_data.get("title", f"Bản Tin {category}")
+            summary_lines = [
+                f"## 🎬 HaizFlow Broadcast Pipeline Summary",
+                f"- **Tiêu đề**: **{title}**",
+                f"- **Chủ đề**: `{category}` ({aspect_ratio})",
+                f"- **Số sự kiện**: `{max_topics}`",
+                f"- **Mã thoát tiến trình**: `exit_code={res.returncode}`",
+                "",
+            ]
+            if args.youtube:
+                if yt_published and yt_url:
+                    summary_lines.extend([
+                        "### ✅ Xuất Bản YouTube: THÀNH CÔNG",
+                        f"- 🔗 **Xem video**: [{yt_url}]({yt_url})",
+                        f"- 🆔 **Video ID**: `{manifest_data.get('youtube_video_id', '')}`",
+                    ])
+                    if manifest_data.get("youtube_playlist_title"):
+                        summary_lines.append(f"- 📺 **Playlist**: {manifest_data.get('youtube_playlist_title')}")
+                else:
+                    summary_lines.extend([
+                        "### ❌ Xuất Bản YouTube: KHÔNG THÀNH CÔNG",
+                        f"- ⚠️ **Lý do**: {yt_error or 'Không tìm thấy OAuth Token hoặc xác thực bị lỗi'}",
+                        "",
+                        "**Hướng dẫn khắc phục:**",
+                        "1. Vào **Settings** > **Secrets and variables** > **Actions** trên GitHub.",
+                        "2. Đảm bảo đã thiết lập đủ 2 secrets: `YOUTUBE_TOKEN_JSON` và `YOUTUBE_CLIENT_SECRET_JSON`.",
+                        "3. Nếu token đã quá 7 ngày (Google OAuth App ở chế độ 'Testing'), chạy `python scripts/setup_youtube_auth.py` trên máy tính để cấp lại token mới và cập nhật vào Secret.",
+                    ])
+            else:
+                summary_lines.append("ℹ️ *Chế độ không đăng tải YouTube (--no-youtube) được kích hoạt.*")
+
+            Path(summary_file).write_text("
+".join(summary_lines) + "
+", encoding="utf-8")
+        except Exception as sum_exc:
+            logger.warning("Could not write GITHUB_STEP_SUMMARY: %s", sum_exc)
 
     # Post-run Google Drive archival for editorial scripts
     try:
