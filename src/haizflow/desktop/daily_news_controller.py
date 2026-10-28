@@ -314,6 +314,8 @@ class DailyNewsController(QObject):
             norm = "viral"
         elif norm in ("hope", "tinvui", "tin_vui", "goodnews", "good_news", "sangche", "phatminh", "hyvong"):
             norm = "hope"
+        elif norm in ("ai", "ai_tech", "tin_ai", "trituenhantao", "congnghe_ai"):
+            norm = "ai"
         elif norm in ("world", "thoisu"):
             norm = "world"
         else:
@@ -326,13 +328,20 @@ class DailyNewsController(QObject):
             self._schedule_wake_up = sched["wake_up"]
             self._schedule_active = sched["active"]
 
-            # Auto-adapt video format: Only viral and hope are 9:16 Shorts, all other categories are 16:9
-            if norm in ("viral", "hope"):
+            # Auto-adapt video format: Only viral, hope and ai are 9:16 Shorts, all other categories are 16:9
+            if norm in ("viral", "hope", "ai"):
                 if self._aspect_ratio != "9:16":
                     self._aspect_ratio = "9:16"
                     self.aspectRatioChanged.emit()
-                if self._max_topics in (3, 7, 8):
+                if self._max_topics in (3, 7, 8, 9):
                     self._max_topics = 1
+                    self.maxTopicsChanged.emit()
+            elif norm in ("tin_moi", "morning"):
+                if self._aspect_ratio != "16:9":
+                    self._aspect_ratio = "16:9"
+                    self.aspectRatioChanged.emit()
+                if self._max_topics in (1, 3, 8):
+                    self._max_topics = 9
                     self.maxTopicsChanged.emit()
             else:
                 if self._aspect_ratio != "16:9":

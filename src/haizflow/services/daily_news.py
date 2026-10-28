@@ -1450,6 +1450,49 @@ def calculate_hope_score(item: Any) -> float:
     return score
 
 
+def calculate_ai_score(item: Any) -> float:
+    """Calculate an AI relevance and breakthrough score for YouTube Shorts.
+
+    Prioritizes stories from major AI labs (OpenAI, Google DeepMind, Anthropic, Nvidia)
+    and breakthroughs in LLMs, humanoid robots, AI chips, and groundbreaking models.
+    """
+    title = getattr(item, "title", "")
+    summary = getattr(item, "summary", "")
+    full_text = getattr(item, "full_text", "")
+    full = f"{title} {summary} {full_text}".lower()
+
+    score = 10.0
+    tier_1_keywords = (
+        "artificial intelligence", "openai", "deepmind", "anthropic", "chatgpt", "gpt-",
+        "gemini", "claude", "large language model", "llm", "generative ai", "genai",
+        "humanoid robot", "ai chip", "nvidia blackwell", "ai model", "ai agent",
+        "autonomous robot", "neural network", "transformer model", "supercomputer"
+    )
+    tier_2_keywords = (
+        "ai", "robot", "robotics", "machine learning", "deep learning", "automation",
+        "nvidia", "meta ai", "apple intelligence", "copilot", "sora", "midjourney",
+        "waymo", "self-driving", "quantum computing", "semiconductor", "chip"
+    )
+    for kw in tier_1_keywords:
+        if kw in full:
+            score += 25.0
+    for kw in tier_2_keywords:
+        if kw in full:
+            score += 10.0
+
+    t_lower = title.lower()
+    for kw in tier_1_keywords:
+        if kw in t_lower:
+            score += 30.0
+            break
+
+    score += min(len(full_text) * 0.005, 10.0)
+    if getattr(item, "image_url", ""):
+        score += 5.0
+
+    return score
+
+
 def is_mainstream_hard_news(title: str, desc: str) -> bool:
     """Filter out mainstream world politics, professional sports, and corporate tech news to avoid overlap."""
     full = f"{title} {desc}".lower()
@@ -1870,6 +1913,9 @@ def cluster_and_rank_news_topics(
     elif norm_cat == "hope":
         # Rank by hope score: prioritizes scientific breakthroughs, cures, clean energy & inventions
         unified_items.sort(key=calculate_hope_score, reverse=True)
+    elif norm_cat in ("ai", "ai_tech"):
+        # Rank by AI breakthrough score: prioritizes foundation models, humanoid robots & chips
+        unified_items.sort(key=calculate_ai_score, reverse=True)
     else:
         # Rank by multi-source prominence and substantive summary
         unified_items.sort(key=lambda it: getattr(it, "_prominence_score", 0.0) + len(it.summary) * 0.01, reverse=True)
@@ -2876,7 +2922,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
             cand = matched_item.image_url
             item_img = cand if not is_placeholder_image_url(cand) else ""
             item_plat = matched_item.social_platform
-        elif category not in ("viral", "hope") and idx == 0 and news_items:
+        elif category not in ("viral", "hope", "ai") and idx == 0 and news_items:
             # Long-form standard broadcast: hook uses first topic photo if available
             cand = news_items[0].image_url
             item_img = cand if not is_placeholder_image_url(cand) else ""
@@ -4947,10 +4993,10 @@ def format_youtube_description_with_sources(
     raw_hashtags = (hashtags or manifest.get("hashtags") or "").strip()
     clean_hashtags = " ".join([t for t in raw_hashtags.split() if t.lower().lstrip("#") != "haizflow"])
 
-    # Auto-add #Shorts if this is a vertical short (9:16) or shorts category (viral/hope)
+    # Auto-add #Shorts if this is a vertical short (9:16) or shorts category (viral/hope/ai)
     norm_cat = str(manifest.get("category") or "").strip().lower()
     aspect_ratio = str(manifest.get("aspect_ratio") or "")
-    is_shorts = (aspect_ratio == "9:16") or norm_cat in ("viral", "hope", "tinla", "docla", "tinvui", "hyvong")
+    is_shorts = (aspect_ratio == "9:16") or norm_cat in ("viral", "hope", "ai", "ai_tech", "tin_ai", "tinla", "docla", "tinvui", "hyvong")
     if is_shorts and "#shorts" not in clean_hashtags.lower():
         clean_hashtags = f"#Shorts {clean_hashtags}".strip()
 
@@ -5106,14 +5152,18 @@ def produce_daily_news_video(
     norm_cat = normalize_category(category)
     cfg = get_category_config(norm_cat)
 
-    # Viral and Hope categories target YouTube Shorts: vertical 9:16 and focus on 1 single standout story (<= 25s)
-    # All other news categories (world, war, tech, sports) are standard long-form broadcasts and MUST strictly be 16:9
-    if norm_cat in ("viral", "hope"):
+    # Shorts categories: viral, hope, and ai target YouTube Shorts: vertical 9:16 and focus on 1 single standout story (<= 25s)
+    # Long-form news categories: tin_moi, tin_nong, world, war, tech, sports target widescreen 16:9
+    if aspect_ratio == "9:16" or norm_cat in ("viral", "hope", "ai"):
         aspect_ratio = "9:16"
-        if not max_topics or max_topics <= 0 or max_topics in (3, 7, 8):
+        if norm_cat in ("viral", "hope", "ai") and (not max_topics or max_topics <= 0 or max_topics in (3, 7, 8, 9)):
             max_topics = 1
-    else:
+    elif norm_cat in ("tin_moi", "morning"):
         aspect_ratio = "16:9"
+        if not max_topics or max_topics == 8:
+            max_topics = 9
+    elif aspect_ratio not in ("9:16", "16:9", "1:1"):
+        aspect_ratio = cfg.get("default_aspect_ratio", "16:9")
 
     if output_dir is None:
         date_str = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -171,8 +171,15 @@ def main() -> int:
                 pass
         return 0
 
-    aspect_ratio = args.aspect_ratio or default_ar
-    max_topics = args.max_topics or default_topics
+    if category in ("hope", "viral", "ai"):
+        aspect_ratio = "9:16"
+        max_topics = 1
+    elif category == "tin_moi":
+        aspect_ratio = "16:9"
+        max_topics = 9
+    else:
+        aspect_ratio = args.aspect_ratio or default_ar
+        max_topics = args.max_topics or default_topics
 
     logger.info("==================================================================")
     logger.info("  STARTING AUTOMATED NEWS BROADCAST (CI / CLOUD RUNNER)")
