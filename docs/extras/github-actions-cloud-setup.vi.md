@@ -19,6 +19,13 @@
 
 ## 2. Các Bước Cài Đặt Secrets Trên GitHub (Chỉ Làm 1 Lần)
 
+> [!TIP]
+> **Cách lấy mã nhanh nhất**: Bạn chỉ cần chạy lệnh sau trên máy tính để tự động mở trình duyệt cấp quyền và nhận sẵn 2 khối JSON cho YouTube:
+> ```powershell
+> python scripts/setup_youtube_auth.py
+> ```
+> Xem tài liệu hướng dẫn từng bước chi tiết tại: [Hướng dẫn cấu hình YouTube OAuth & GitHub Secrets](./youtube-oauth-setup-guide.vi.md).
+
 Để GitHub Actions có quyền gọi AI Gemini và đăng video lên kênh YouTube của bạn, hãy thêm 3 Secrets bảo mật:
 
 1. Truy cập vào Repository của bạn: [https://github.com/thaipeace/videoFlow](https://github.com/thaipeace/videoFlow)
@@ -31,11 +38,11 @@
 
 ### Secret 2: `YOUTUBE_TOKEN_JSON`
 * **Name**: `YOUTUBE_TOKEN_JSON`
-* **Secret**: Mở tệp `runtime/data/youtube_token.json` trên máy tính của bạn, sao chép toàn bộ nội dung JSON (chứa `access_token` và `refresh_token`) rồi dán vào đây.
+* **Secret**: Chạy `python scripts/setup_youtube_auth.py` và sao chép khối JSON thứ nhất in trên màn hình dán vào đây (hoặc sao chép nội dung tệp `runtime/data/youtube_token.json`).
 
 ### Secret 3: `YOUTUBE_CLIENT_SECRET_JSON`
 * **Name**: `YOUTUBE_CLIENT_SECRET_JSON`
-* **Secret**: Mở tệp `runtime/data/youtube_client_secret.json` trên máy tính của bạn, sao chép toàn bộ nội dung JSON rồi dán vào đây.
+* **Secret**: Sao chép khối JSON thứ hai in trên màn hình dán vào đây (hoặc sao chép nội dung tệp `runtime/data/youtube_client_secret.json`).
 
 ### Secret 4 (Tùy chọn): `GDRIVE_WEBHOOK_URL`
 * **Name**: `GDRIVE_WEBHOOK_URL`

@@ -147,6 +147,9 @@ python haizflow_desktop.py
 
 ### Quản lý lịch bản tin tự động (CLI)
 ```powershell
+# Kết nối tài khoản YouTube & tạo mã bí mật GitHub Secrets
+python scripts/setup_youtube_auth.py
+
 # Kiểm tra sức khỏe toàn bộ luồng bản tin tự động
 python scripts/check_daily_news_harness.py
 
