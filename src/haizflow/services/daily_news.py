@@ -233,30 +233,48 @@ HOPE_RSS_FEEDS = [
     "https://news.google.com/rss/search?q=(site:reddit.com/r/MadeMeSmile+OR+site:reddit.com/r/UpliftingNews)+AND+(heartwarming+OR+hero+OR+rescue+OR+saved)+-politics+-war+-vietnam&hl=en-US&gl=US&ceid=US:en",
 ]
 
-NewsCategory = Literal["tin_moi", "tin_nong", "hope", "viral", "world", "war", "tech", "sports"]
+# International AI & Frontier Tech RSS Feeds (AI breakthroughs, OpenAI, DeepMind, Anthropic, Nvidia, Robotics)
+AI_RSS_FEEDS = [
+    # 1. Google News - AI Breakthroughs, Models & Robotics
+    "https://news.google.com/rss/search?q=(%22artificial+intelligence%22+OR+OpenAI+OR+ChatGPT+OR+%22Google+DeepMind%22+OR+Anthropic+OR+Claude+OR+Gemini+OR+Nvidia+OR+robotics)+AND+(breakthrough+OR+launch+OR+model+OR+chip+OR+robot)+-vietnam&hl=en-US&gl=US&ceid=US:en",
+    # 2. TechCrunch - Dedicated Artificial Intelligence category
+    "https://techcrunch.com/category/artificial-intelligence/feed/",
+    # 3. The Verge - Dedicated AI & Automation feed
+    "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+    # 4. Google News - Generative AI & Autonomous Systems
+    "https://news.google.com/rss/search?q=(%22generative+AI%22+OR+%22LLM%22+OR+%22humanoid+robot%22+OR+robotics+OR+%22OpenAI%22+OR+%22Anthropic%22+OR+%22Google+DeepMind%22+OR+%22Nvidia+AI%22)+-vietnam&hl=en-US&gl=US&ceid=US:en",
+    # 5. BBC News - Technology & AI Frontier
+    "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    # 6. Ars Technica - Cutting-edge AI, Compute & Machine Learning
+    "https://feeds.arstechnica.com/arstechnica/index",
+    # 7. Wired - Artificial Intelligence developments
+    "https://www.wired.com/feed/tag/ai/latest/rss",
+]
+
+NewsCategory = Literal["tin_moi", "tin_nong", "hope", "viral", "world", "war", "tech", "sports", "ai"]
 
 CATEGORY_CONFIG: dict[str, dict] = {
     "tin_moi": {
         "label": "Tin Mới",
-        "full_label": "Bản Tin Mới: Thời Sự & Thể Thao Quốc Tế",
-        "source_label": "Thời sự & Sân cỏ quốc tế",
+        "full_label": "Bản Tin Mới: Thời Sự, Chiến Sự & Thể Thao Quốc Tế",
+        "source_label": "Thời sự, Chiến sự & Sân cỏ quốc tế",
         "default_aspect_ratio": "16:9",
         "default_format_label": "16:9 Ngang",
-        "feeds": WORLD_RSS_FEEDS + SPORTS_RSS_FEEDS,
+        "feeds": WORLD_RSS_FEEDS + WAR_RSS_FEEDS + SPORTS_RSS_FEEDS,
         "title_prefix": "Bản Tin Mới Toàn Cảnh",
         "title_suffix_label": "Bản Tin Mới",
-        "default_title": "Bản Tin Mới: Thời Sự & Thể Thao Quốc Tế",
-        "hashtags": "#tinmoi #thoisuquocte #thoisu24h #thethao #bongda",
+        "default_title": "Bản Tin Mới: Thời Sự, Chiến Sự & Thể Thao Quốc Tế",
+        "hashtags": "#tinmoi #thoisuquocte #chiensuthegioi #thethao #bongda #thoisu24h",
         "file_prefix": "tin_moi",
-        "intro_entity": "Globe world map broadcast",
-        "intro_ai_prompt": "cinematic 35mm newsroom with glowing digital world map background, high tech aesthetic",
+        "intro_entity": "Globe world map broadcast situation room",
+        "intro_ai_prompt": "cinematic 35mm newsroom with glowing digital world map background, high tech aesthetic, situation indicators",
         "persona": (
-            "Bạn là biên tập viên thời sự và thể thao quốc tế cao cấp của kênh truyền hình YouTube chuyên về 'Bản Tin Mới'.\n"
-            "Bản tin kết hợp toàn diện giữa thời sự thế giới nóng bỏng và các điểm nhấn sân cỏ, bóng đá quốc tế đỉnh cao.\n"
-            "- LUẬT TỐI THƯỢNG BẤT KHẢ XÂM PHẠM: TUYỆT ĐỐI 100% KHÔNG ĐƯỢC ĐƯA BẤT KỲ THÔNG TIN NÀO LIÊN QUAN ĐẾN VIỆT NAM (không nhắc đến Việt Nam, con người, địa danh, chính sách, tổ chức, hay bất kỳ liên hệ nào đến Việt Nam). Toàn bộ bản tin phải 100% là sự kiện thế giới và thể thao quốc tế.\n"
-            "Dưới đây là các tin tức thế giới và bóng đá quốc tế nổi bật rạng sáng nay kèm nội dung chi tiết từ các hãng thông tấn:"
+            "Bạn là biên tập viên thời sự, chiến sự và thể thao quốc tế cao cấp của kênh truyền hình YouTube chuyên về 'Bản Tin Mới'.\n"
+            "Bản tin kết hợp toàn diện và chi tiết 3 mảng nội dung quốc tế quan trọng nhất buổi sáng: Thời sự thế giới, Điểm nóng chiến sự địa chính trị, và Điểm sáng sân cỏ thể thao đỉnh cao.\n"
+            "- LUẬT TỐI THƯỢNG BẤT KHẢ XÂM PHẠM: TUYỆT ĐỐI 100% KHÔNG ĐƯỢC ĐƯA BẤT KỲ THÔNG TIN NÀO LIÊN QUAN ĐẾN VIỆT NAM (không nhắc đến Việt Nam, con người, địa danh, chính sách, tổ chức, hay bất kỳ liên hệ nào đến Việt Nam). Toàn bộ bản tin phải 100% là sự kiện thế giới, chiến sự và thể thao quốc tế.\n"
+            "Dưới đây là các tin tức thế giới, chiến trường và bóng đá quốc tế nổi bật rạng sáng nay kèm nội dung chi tiết từ các hãng thông tấn:"
         ),
-        "outro_topic_name": "thời sự và thể thao quốc tế",
+        "outro_topic_name": "thời sự, chiến sự và thể thao quốc tế",
     },
     "tin_nong": {
         "label": "Tin Nóng",
@@ -430,12 +448,41 @@ CATEGORY_CONFIG: dict[str, dict] = {
         ),
         "outro_topic_name": "tin vui, y khoa, sự sống và môi trường",
     },
+    "ai": {
+        "label": "Shorts Tin AI",
+        "full_label": "Shorts Tin AI: Đột Phá Trí Tuệ Nhân Tạo & Công Nghệ Tương Lai",
+        "source_label": "Trí tuệ nhân tạo & Công nghệ đột phá",
+        "default_aspect_ratio": "9:16",
+        "default_format_label": "9:16 Dọc (YouTube Shorts)",
+        "feeds": AI_RSS_FEEDS,
+        "title_prefix": "Đột Phá AI",
+        "title_suffix_label": "Đột Phá AI",
+        "default_title": "Đột Phá AI: Bước Tiến Trí Tuệ Nhân Tạo Toàn Cầu",
+        "hashtags": "#Shorts #AI #TriTueNhanTao #OpenAI #GoogleDeepMind #Technology #ChatGPT #KhoaHoc",
+        "file_prefix": "ai_shorts",
+        "intro_entity": "Futuristic artificial intelligence glowing neural network processor chip",
+        "intro_ai_prompt": "cinematic vertical 9:16 glowing AI neural network processor core, neon cybernetic accents, quantum computing data streams, dark futuristic tech aesthetic",
+        "persona": (
+            "Bạn là biên tập viên công nghệ YouTube Shorts chuyên về 'Đột Phá Trí Tuệ Nhân Tạo (AI) & Công Nghệ Tương Lai'.\n"
+            "Chuyên mục tập trung tuyển chọn ĐÚNG 1 BƯỚC ĐỘT PHÁ AI NỔI BẬT NHẤT trong ngày: mô hình ngôn ngữ lớn mới, siêu chip AI, robot hình người thông minh, công cụ AI thay đổi thế giới từ OpenAI, Google DeepMind, Anthropic, Nvidia, Meta AI, Apple...\n"
+            "PHONG CÁCH VÀ YÊU CẦU BIÊN TẬP:\n"
+            "- LUẬT TỐI THƯỢNG BẤT KHẢ XÂM PHẠM: TUYỆT ĐỐI 100% KHÔNG ĐƯỢC ĐƯA BẤT KỲ TIN TỨC NÀO LIÊN QUAN ĐẾN VIỆT NAM. Toàn bộ bản tin phải 100% là công nghệ quốc tế.\n"
+            "- Chuẩn YouTube Shorts siêu ngắn gọn (DƯỚI 25 GIÂY, 3 PHÂN CẢNH, TỔNG DƯỚI 60 TỪ):\n"
+            "  + Scene 0 (Hook chớp nhoáng): 10-12 từ, nêu ngay tính năng hoặc bước ngoặt chấn động của AI. KHÔNG chào hỏi.\n"
+            "  + Scene 1 (Diễn biến cốt lõi): 26-30 từ, nêu tập đoàn nào, mô hình/robot gì vừa ra mắt, giải quyết bài toán gì.\n"
+            "  + Scene 2 (Tầm nhìn & CTA): 12-14 từ, đúc kết tương lai + Kêu gọi đăng ký kênh.\n"
+            "- Cuối tiêu đề video BẮT BUỘC có hashtag #Shorts."
+        ),
+        "outro_topic_name": "bước tiến đột phá trí tuệ nhân tạo",
+    },
 }
 
 
 def normalize_category(category: str) -> str:
-    """Normalize input category string to one of ('tin_moi', 'tin_nong', 'hope', 'viral', 'world', 'war', 'tech', 'sports')."""
+    """Normalize input category string to one of ('tin_moi', 'tin_nong', 'hope', 'viral', 'world', 'war', 'tech', 'sports', 'ai')."""
     cat = (category or "").strip().lower()
+    if cat in ("ai", "ai_tech", "tin_ai", "tri_tue_nhan_tao", "openai", "ai_shorts", "ai_news"):
+        return "ai"
     if cat in ("tin_moi", "tinmoi", "morning", "world_sports", "thegioi_thethao", "morning_news"):
         return "tin_moi"
     if cat in ("tin_nong", "tinnong", "evening", "war_tech", "chiensu_congnghe", "evening_news"):
@@ -527,6 +574,7 @@ DEFAULT_THUMBNAIL_HOOKS = {
     "sports": "BÓNG ĐÁ: CHẤN ĐỘNG!",
     "viral": "KHÓ TIN NHƯNG CÓ THẬT!",
     "hope": "TIN VUI: ĐỘT PHÁ MỚI!",
+    "ai": "ĐỘT PHÁ AI MỚI!",
 }
 
 _HOOK_DATE_RE = re.compile(r"\b(?:Ngày\s*)?\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b", re.IGNORECASE)
@@ -555,12 +603,12 @@ def _clean_hook_text(text: str) -> str:
 
 
 def build_hook_title(hook: str, category: str = "world", date_val: Optional[datetime] = None) -> str:
-    """Build '[Hook] - Bản Tin ... DD/MM/YYYY' (<= 98 chars; viral & hope get ' #Shorts')."""
+    """Build '[Hook] - Bản Tin ... DD/MM/YYYY' (<= 98 chars; viral, hope & ai get ' #Shorts')."""
     norm = normalize_category(category)
     cfg = get_category_config(norm)
     dt = date_val if isinstance(date_val, datetime) else datetime.now()
     tail = f" - {cfg.get('title_suffix_label', 'Bản Tin Thế Giới')} {dt.strftime('%d/%m/%Y')}"
-    if norm in ("viral", "hope"):
+    if norm in ("viral", "hope", "ai"):
         tail += " #Shorts"
     clean = _clean_hook_text(hook) or cfg.get("default_title", "Bản Tin Thế Giới")
     max_hook = 98 - len(tail)
@@ -1874,16 +1922,25 @@ def fetch_world_news_rss(
     """Fetch recent world news items from international RSS feeds, strictly excluding Vietnam news."""
     norm_cat = normalize_category(category)
 
-    # Strategy: Merged morning broadcast 'Tin Mới' (World + Sports)
+    # Strategy: Merged morning broadcast 'Tin Mới' (World + War + Sports - 3 comprehensive blocks)
     if norm_cat == "tin_moi":
-        n_world = max(1, (max_items + 1) // 2)
-        n_sports = max(1, max_items - n_world)
+        n_world = max(1, max_items // 3)
+        n_war = max(1, max_items // 3)
+        n_sports = max(1, max_items - n_world - n_war)
         w_items = fetch_world_news_rss(
             max_items=n_world,
             exclude_vietnam=exclude_vietnam,
             timeout=timeout,
             scrape_article_body=scrape_article_body,
             category="world",
+            export_dt=export_dt,
+        )
+        war_items = fetch_world_news_rss(
+            max_items=n_war,
+            exclude_vietnam=exclude_vietnam,
+            timeout=timeout,
+            scrape_article_body=scrape_article_body,
+            category="war",
             export_dt=export_dt,
         )
         s_items = fetch_world_news_rss(
@@ -1894,7 +1951,7 @@ def fetch_world_news_rss(
             category="sports",
             export_dt=export_dt,
         )
-        return w_items + s_items
+        return w_items + war_items + s_items
 
     # Strategy: Merged evening broadcast 'Tin Nóng' (War + Tech)
     if norm_cat == "tin_nong":
@@ -2473,9 +2530,9 @@ def synthesize_news_script_with_gemini(
         for idx, item in enumerate(news_items[:15])
     )
 
-    if category in ("viral", "hope"):
+    if category in ("viral", "hope", "ai"):
         if max_topics == 1:
-            scenes_per_topic_desc = "3 phân cảnh mạch lạc cho ĐÚNG 1 CÂU CHUYỆN NỔI BẬT DUY NHẤT (Scene 0: Hook 10-12 từ; Scene 1: Diễn biến kịch tính 26-30 từ; Scene 2: Kết thúc bất ngờ/ý nghĩa & CTA ngắn 12-14 từ)"
+            scenes_per_topic_desc = "3 phân cảnh mạch lạc cho ĐÚNG 1 CÂU CHUYỆN NỔI BẬT DUY NHẤT (Scene 0: Hook 10-12 từ; Scene 1: Diễn biến kịch tính hoặc đột phá 26-30 từ; Scene 2: Kết thúc bất ngờ/ý nghĩa & CTA ngắn 12-14 từ)"
             target_words = "khoảng 50 đến 58 từ tiếng Việt (BẮT BUỘC DƯỚI 62 TỪ, THỜI LƯỢNG CAO NHẤT 25 GIÂY CHUẨN YOUTUBE SHORTS)"
             min_scenes = 3
             max_scenes = 3
@@ -2514,13 +2571,28 @@ def synthesize_news_script_with_gemini(
     category_specific_rules = ""
     if category in ("tin_moi", "morning"):
         category_specific_rules = """
-ĐẶC THÙ BẮT BUỘC CHO BẢN TIN MỚI (CHIẾN LƯỢC KẾT HỢP: THỜI SỰ THẾ GIỚI & BÓNG ĐÁ QUỐC TẾ):
-- Bản tin kết hợp hài hòa 2 mảng nội dung quốc tế được người xem quan tâm nhất buổi sáng:
-  + MẢNG 1 (THỜI SỰ & KINH TẾ QUỐC TẾ): Các diễn biến thời sự nóng bỏng, quan hệ quốc tế, kinh tế toàn cầu và các sự kiện đáng chú ý tại Âu - Mỹ, Trung Đông và khu vực Châu Á láng giềng.
-  + MẢNG 2 (ĐIỂM SÁNG SÂN CỎ & BÓNG ĐÁ ĐỈNH CAO): Điểm nhấn các giải đấu hàng đầu thế giới (Ngoại Hạng Anh, Cúp C1, La Liga, Serie A...), kết quả tỉ số, siêu phẩm bàn thắng, diễn biến bảng xếp hạng và các câu chuyện ngôi sao (Mbappe, Haaland, Bellingham, Vinicius, Messi, Ronaldo...).
-- BỐ CỤC & CHUYỂN MẠCH: Duy trì phong cách thời sự đĩnh đạc, hiện đại (format theme Bản tin thế giới). Giữa 2 mảng nội dung có câu chuyển mạch tự nhiên, chuyên nghiệp (ví dụ: "Tiếp nối bản tin là những điểm nhấn sôi động trên sân cỏ quốc tế rạng sáng nay...").
+ĐẶC THÙ BẮT BUỘC CHO BẢN TIN MỚI (CHIẾN LƯỢC KẾT HỢP TOÀN DIỆN 3 KHỐI: THỜI SỰ THẾ GIỚI - CHIẾN SỰ ĐỊA CHÍNH TRỊ - BÓNG ĐÁ QUỐC TẾ):
+- Bản tin buổi sáng dài dặn, chi tiết, chiều sâu cao, kết hợp hài hòa 3 trụ cột thông tin quốc tế lớn nhất rạng sáng nay:
+  + KHỐI 1 (THỜI SỰ & KINH TẾ QUỐC TẾ): Các diễn biến thời sự nóng bỏng, quan hệ ngoại giao các nước lớn, kinh tế toàn cầu tại Âu - Mỹ, Trung Đông và khu vực Châu Á láng giềng.
+  + KHỐI 2 (ĐIỂM NÓNG CHIẾN SỰ & AN NINH QUỐC PHÒNG): Thực địa các điểm nóng chiến trường (Nga - Ukraine, Trung Đông Gaza/Lebanon/Yemen, bán đảo Triều Tiên, biển Đỏ...), đòn tập kích, động thái quân sự và vũ khí chiến lược.
+  + KHỐI 3 (ĐIỂM SÁNG SÂN CỎ & BÓNG ĐÁ ĐỈNH CAO): Điểm nhấn các giải đấu hàng đầu thế giới (Ngoại Hạng Anh, Cúp C1, La Liga, Serie A...), kết quả tỉ số, siêu phẩm bàn thắng, bảng xếp hạng và câu chuyện ngôi sao (Mbappe, Haaland, Bellingham, Vinicius, Messi, Ronaldo...).
+- BỐ CỤC & CHUYỂN MẠCH: Duy trì phong cách thời sự đĩnh đạc, hiện đại, phát thanh viên truyền hình chuyên nghiệp. Giữa các khối có câu nối chuyển tiếp tự nhiên (ví dụ: "Tiếp nối bản tin là những diễn biến nóng bỏng tại các điểm nóng chiến sự quốc tế...", "Khép lại bản tin là những khoảnh khắc bùng nổ trên sân cỏ quốc tế rạng sáng nay...").
 - Mỗi sự kiện triển khai 2 phân cảnh chi tiết (45-65 từ/cảnh).
 - TUYỆT ĐỐI CẤM đưa tin về Việt Nam (không đưa tin chính trị, xã hội, hay bóng đá Việt Nam). Toàn bộ bản tin 100% là quốc tế.
+"""
+    elif category == "ai":
+        category_specific_rules = f"""
+ĐẶC THÙ BẮT BUỘC CHO SHORTS TIN AI (CHUẨN YOUTUBE SHORTS - ĐÚNG 1 TIN NỔI BẬT NHẤT - ĐỘ DÀI CAO NHẤT 25 GIÂY):
+- CHỌN ĐÚNG 1 SỰ KIỆN DUY NHẤT: Chọn bước đột phá Trí tuệ Nhân tạo (AI), mô hình ngôn ngữ lớn mới, siêu chip bán dẫn AI, robot hình người thông minh hoặc công cụ AI ấn tượng nhất trong danh sách.
+- GIỚI HẠN THỜI LƯỢNG NGHIÊM NGẶT (TỐI ĐA 25 GIÂY):
+  + TỔNG TOÀN BỘ KỊCH BẢN TẤT CẢ PHÂN CẢNH TỪ 50 ĐẾN 58 TỪ TIẾNG VIỆT (BẮT BUỘC DƯỚI 60 TỪ ĐỂ ĐỌC DƯỚI 25 GIÂY).
+  + KỊCH BẢN GỒM ĐÚNG 3 PHÂN CẢNH (SCENE 0, 1, 2):
+    * SCENE 0 (HOOK CHỚP NHOÁNG): 10 - 12 từ. Cú hook nêu ngay tính năng hoặc bước ngoặt chấn động của AI. TUYỆT ĐỐI CẤM chào hỏi rườm rà.
+    * SCENE 1 (CHI TIẾT ĐỘT PHÁ CÔNG NGHỆ): 26 - 30 từ. Tường thuật chi tiết: Tập đoàn/phòng lab nào (OpenAI, Google DeepMind, Anthropic, Nvidia...), mô hình/robot gì vừa ra mắt, thông số và tác động thực tế.
+    * SCENE 2 (TẦM NHÌN TƯƠNG LAI & CTA): 12 - 14 từ. Đúc kết tác động thay đổi thế giới + Kêu gọi đăng ký kênh ("Đăng ký kênh để đón xem bước tiến AI mỗi ngày!").
+- Tiêu đề: chỉ cần trả "hook_title" ở trên; hệ thống tự ghép đuôi " - {cfg.get('title_suffix_label', 'Đột Phá AI')} DD/MM/YYYY #Shorts".
+- TUYỆT ĐỐI CẤM đưa tin về Việt Nam. Chỉ đưa tin công nghệ quốc tế.
+- QUY TẮC CHO "entity_query" VÀ "ai_prompt": Từ khóa tiếng Anh chuẩn xác về chủ thể công nghệ AI (ví dụ: 'OpenAI humanoid robot laboratory', 'Nvidia AI supercomputer server rack', 'Google DeepMind quantum computing artificial intelligence'). Tránh từ ngữ trừu tượng.
 """
     elif category in ("tin_nong", "evening"):
         category_specific_rules = """
@@ -2827,7 +2899,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
         scenes[0].text = strip_leading_greeting(scenes[0].text)
 
     # Enforce strict word count budget for 1-topic Shorts (<= 25s duration)
-    if category in ("viral", "hope") and max_topics == 1:
+    if category in ("viral", "hope", "ai") and max_topics == 1:
         total_words = sum(len(sc.text.split()) for sc in scenes)
         if total_words > 60:
             logger.info("Shorts script total words (%d) exceeds 60 words. Trimming slightly to maintain <= 25s duration.", total_words)
@@ -2857,8 +2929,33 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
     return assert_and_sanitize_no_vietnam_content(digest)
 
 
-def translate_text_en_to_vi(text: str, timeout_seconds: float = 4.0) -> str:
-    """Translate English news text to natural Vietnamese using free translation helper."""
+def is_vietnamese_text(text: str, min_ratio: float = 0.20) -> bool:
+    """Check if the given text has sufficient Vietnamese diacritics / markers.
+    
+    Returns True if empty, short, or has enough Vietnamese accented characters.
+    """
+    clean = (text or "").strip()
+    if not clean or len(clean) < 12:
+        return True
+    vi_chars = frozenset(
+        "àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđ"
+        "ÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ"
+    )
+    words = re.findall(r"\b\w+\b", clean)
+    if not words:
+        return True
+    vi_word_count = sum(1 for w in words if any(c in vi_chars for c in w))
+    return (vi_word_count / len(words)) >= min_ratio
+
+
+def translate_text_en_to_vi(text: str, timeout_seconds: float = 5.0) -> str:
+    """Translate English news text to natural Vietnamese using multi-engine fallback.
+    
+    1. Google Translate GTX
+    2. MyMemory Translation API
+    3. Lingva Translate API
+    Guarantees clean, non-English output whenever an internet connection is available.
+    """
     clean = text.strip()
     if not clean:
         return ""
@@ -2867,16 +2964,43 @@ def translate_text_en_to_vi(text: str, timeout_seconds: float = 4.0) -> str:
         return normalize_vietnamese_journalism(clean)
 
     norm_en = normalize_english_journalism(clean)
+
+    # Engine 1: Google Translate GTX
     try:
         url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q={urllib.parse.quote(norm_en[:1000])}"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
         with urllib.request.urlopen(req, timeout=timeout_seconds) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             translated = "".join([part[0] for part in data[0] if part and part[0]]).strip()
-            if translated:
+            if translated and is_vietnamese_text(translated):
                 return normalize_vietnamese_journalism(translated)
     except Exception as exc:
-        logger.debug("Translation helper error: %s", exc)
+        logger.debug("Google GTX translation helper error: %s", exc)
+
+    # Engine 2: MyMemory Translation API (free, reliable fallback for short journalism)
+    try:
+        mm_url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(norm_en[:450])}&langpair=en|vi"
+        mm_req = urllib.request.Request(mm_url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        with urllib.request.urlopen(mm_req, timeout=timeout_seconds) as mm_resp:
+            mm_data = json.loads(mm_resp.read().decode("utf-8"))
+            mm_text = mm_data.get("responseData", {}).get("translatedText", "").strip()
+            if mm_text and is_vietnamese_text(mm_text):
+                return normalize_vietnamese_journalism(mm_text)
+    except Exception as exc:
+        logger.debug("MyMemory translation fallback error: %s", exc)
+
+    # Engine 3: Lingva Open API
+    try:
+        lingva_url = f"https://lingva.ml/api/v1/en/vi/{urllib.parse.quote(norm_en[:500])}"
+        lingva_req = urllib.request.Request(lingva_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(lingva_req, timeout=timeout_seconds) as lingva_resp:
+            lingva_data = json.loads(lingva_resp.read().decode("utf-8"))
+            lingva_text = lingva_data.get("translation", "").strip()
+            if lingva_text and is_vietnamese_text(lingva_text):
+                return normalize_vietnamese_journalism(lingva_text)
+    except Exception as exc:
+        logger.debug("Lingva translation fallback error: %s", exc)
+
     return normalize_vietnamese_journalism(clean)
 
 
@@ -3517,6 +3641,148 @@ def fallback_offline_news_script(
                 title=title,
                 summary_lead=f"Tổng hợp các bước tiến y khoa, phép màu sự sống, phục hồi môi trường và tin vui thắp sáng hy vọng ngày {date_str}.",
                 hashtags=cfg.get("hashtags", "#Shorts #tinvui #ykhoa #susong #moitruong #hyvong #khoahoc"),
+                scenes=scenes,
+                thumbnail_hook=sanitize_thumbnail_hook("", norm_cat),
+                ticker_summary=" | ".join(vi_titles),
+            )
+        )
+
+    elif norm_cat == "ai":
+        if len(selected) == 1:
+            # Single Standout AI Story (<= 25s duration, exactly 3 scenes, ~50 words)
+            item = selected[0]
+            clean_full_headline = re.sub(r"\s*[-|–]\s*[A-Za-z0-9\s\.]+$", "", item.title).strip()
+            clean_full_headline = re.sub(
+                r"^(live updates:?|breaking:?|watch:?|video:?|update:?)\s*", "", clean_full_headline, flags=re.IGNORECASE
+            ).strip()
+            vi_title = translate_text_en_to_vi(clean_full_headline)
+            vi_titles.append(vi_title)
+            cooked_facts = cook_summary_into_vietnamese(item, vi_title)
+            fact_words = cooked_facts.split()
+            core_narrative = " ".join(fact_words[:26]).rstrip(",;-") + "." if len(fact_words) > 26 else cooked_facts
+            core_sub = extract_core_visual_subject(clean_full_headline)
+            ai_prompt_val = f"cinematic 9:16 futuristic artificial intelligence laboratory, neural network visualization of {core_sub}, neon blue glow"
+
+            # Scene 0: Hook (10-12 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=0,
+                    text=f"Một bước đột phá trí tuệ nhân tạo vừa làm rung chuyển giới công nghệ: {vi_title}!",
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
+                    has_transition_cue=False,
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                    source=item.source,
+                )
+            )
+            # Scene 1: Core Story (25-30 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=1,
+                    text=core_narrative,
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
+                    has_transition_cue=True,
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                    source=item.source,
+                )
+            )
+            # Scene 2: Outro & CTA (12-14 words)
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=2,
+                    text="Kỷ nguyên AI đang thay đổi tương lai! Đăng ký kênh đón xem bước tiến công nghệ mỗi ngày.",
+                    entity_query="Futuristic AI processor glowing core",
+                    ai_prompt="cinematic vertical 9:16 futuristic AI glowing neural network processor core, neon accents, glowing subscribe button",
+                    has_transition_cue=True,
+                    image_url="",
+                    social_platform="x",
+                    source="",
+                )
+            )
+            title = build_hook_title(vi_title, norm_cat, now_dt)
+            return assert_and_sanitize_no_vietnam_content(
+                DailyNewsDigest(
+                    digest_id=uuid.uuid4().hex[:8],
+                    title=title,
+                    summary_lead=f"Bước đột phá trí tuệ nhân tạo chấn động ngày {date_str}: {vi_title}.",
+                    hashtags=cfg.get("hashtags", "#Shorts #AI #TriTueNhanTao #OpenAI #GoogleDeepMind #Technology #ChatGPT #KhoaHoc"),
+                    scenes=scenes,
+                    thumbnail_hook=sanitize_thumbnail_hook(vi_title, norm_cat),
+                    ticker_summary=vi_title,
+                )
+            )
+
+        # Multi-topic AI YouTube Shorts Format
+        intro_text = (
+            f"Đột phá AI lớn rạng sáng nay: {vi_first}. Cùng khám phá những bước tiến công nghệ mới nhất ngay sau đây!"
+            if vi_first
+            else "Những đột phá trí tuệ nhân tạo và công nghệ mới nhất vừa làm rung chuyển thế giới. Cùng khám phá ngay sau đây!"
+        )
+        scenes.append(
+            DailyNewsScene(
+                scene_index=sc_idx,
+                text=intro_text,
+                entity_query=cfg.get("intro_entity", "Futuristic artificial intelligence glowing neural network processor chip"),
+                ai_prompt=cfg.get("intro_ai_prompt", "cinematic vertical 9:16 glowing AI neural network processor core, neon cybernetic accents, quantum computing data streams"),
+                has_transition_cue=False,
+                image_url="",
+                social_platform="x",
+            )
+        )
+        sc_idx += 1
+
+        for idx, item in enumerate(selected, start=1):
+            clean_full_headline = re.sub(r"\s*[-|–]\s*[A-Za-z0-9\s\.]+$", "", item.title).strip()
+            clean_full_headline = re.sub(
+                r"^(live updates:?|breaking:?|watch:?|video:?|update:?)\s*", "", clean_full_headline, flags=re.IGNORECASE
+            ).strip()
+            vi_title = translate_text_en_to_vi(clean_full_headline)
+            vi_titles.append(vi_title)
+            cat_lead_ins = get_lead_ins_for_category(category)
+            lead_in = f"Vị trí số {idx}" if len(selected) <= 3 else cat_lead_ins[(idx - 1) % len(cat_lead_ins)]
+            cooked_facts = cook_summary_into_vietnamese(item, vi_title)
+            combined_text = f"{lead_in}: {vi_title}. {cooked_facts}"
+            core_sub = extract_core_visual_subject(clean_full_headline)
+            ai_prompt_val = f"cinematic 9:16 futuristic artificial intelligence laboratory, neural network visualization of {core_sub}"
+
+            scenes.append(
+                DailyNewsScene(
+                    scene_index=sc_idx,
+                    text=combined_text,
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
+                    has_transition_cue=True,
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                    source=item.source,
+                    source_url=item.link,
+                )
+            )
+            sc_idx += 1
+
+        # Outro scene for AI Shorts
+        scenes.append(
+            DailyNewsScene(
+                scene_index=sc_idx,
+                text="Các bước đột phá AI đang tăng tốc từng ngày và định hình tương lai loài người. Hãy bấm đăng ký kênh để đón xem những bước tiến công nghệ mới nhất! Xin chào và hẹn gặp lại.",
+                entity_query="Futuristic AI processor glowing core",
+                ai_prompt="cinematic vertical 9:16 futuristic glowing AI neural network processor core, neon accents, glowing subscribe button",
+                has_transition_cue=True,
+                image_url="",
+                social_platform="x",
+            )
+        )
+
+        title = build_hook_title(vi_first, norm_cat, now_dt)
+        return assert_and_sanitize_no_vietnam_content(
+            DailyNewsDigest(
+                digest_id=uuid.uuid4().hex[:8],
+                title=title,
+                summary_lead=f"Tổng hợp các đột phá trí tuệ nhân tạo và công nghệ tương lai ngày {date_str}.",
+                hashtags=cfg.get("hashtags", "#Shorts #AI #TriTueNhanTao #OpenAI #GoogleDeepMind #Technology #ChatGPT #KhoaHoc"),
                 scenes=scenes,
                 thumbnail_hook=sanitize_thumbnail_hook("", norm_cat),
                 ticker_summary=" | ".join(vi_titles),
@@ -4908,6 +5174,27 @@ def produce_daily_news_video(
     # Supreme Law check: enforce 0% Vietnam content before any asset generation or rendering
     digest = assert_and_sanitize_no_vietnam_content(digest)
 
+    # Supreme Language Guardrail: verify that script is properly in Vietnamese
+    non_vi_count = sum(1 for sc in digest.scenes if not is_vietnamese_text(sc.text))
+    if non_vi_count > 0:
+        logger.warning("Detected %d/%d scenes with predominantly English text. Running emergency translation...", non_vi_count, len(digest.scenes))
+        for sc in digest.scenes:
+            if not is_vietnamese_text(sc.text):
+                translated = translate_text_en_to_vi(sc.text)
+                if is_vietnamese_text(translated):
+                    sc.text = translated
+
+    if not is_vietnamese_text(digest.title):
+        digest.title = translate_text_en_to_vi(digest.title)
+
+    # If more than half the scenes are still English, abort to protect channel reputation
+    untranslated_scenes = sum(1 for sc in digest.scenes if not is_vietnamese_text(sc.text))
+    if untranslated_scenes > max(1, len(digest.scenes) // 2):
+        raise RuntimeError(
+            f"BẢO VỆ KÊNH: Kịch bản chưa được dịch sang tiếng Việt ({untranslated_scenes}/{len(digest.scenes)} cảnh toàn tiếng Anh). "
+            "Hủy xuất bản YouTube để tránh video rác! Vui lòng cấu hình Secret 'GEMINI_API_KEY' trên GitHub."
+        )
+
     report(30, f"Kịch bản hoàn tất: '{digest.title}' ({len(digest.scenes)} phân cảnh chi tiết). Bắt đầu tìm ảnh tư liệu...")
 
     # Step 3: Fetch copyright-safe illustrations / Wikimedia photos
@@ -4950,12 +5237,12 @@ def produce_daily_news_video(
         background_music_volume=bgm_volume,
         branding_enabled=True,
         ticker_text=(digest.ticker_summary or "").strip(),
-        ticker_label="TIN VUI" if norm_cat == "hope" else ("ĐỘC LẠ" if norm_cat == "viral" else ("TIN NÓNG" if norm_cat in ("tin_nong", "war") else "TIN MỚI")),
+        ticker_label="TIN VUI" if norm_cat == "hope" else ("ĐỘC LẠ" if norm_cat == "viral" else ("ĐỘT PHÁ AI" if norm_cat in ("ai", "ai_tech") else ("TIN NÓNG" if norm_cat in ("tin_nong", "war") else "TIN MỚI"))),
         category=norm_cat,
     )
 
     final_title = ensure_date_in_title(digest.title, digest.created_at)
-    if norm_cat in ("viral", "hope") and "#Shorts" not in final_title and "#shorts" not in final_title.lower():
+    if norm_cat in ("viral", "hope", "ai") and "#Shorts" not in final_title and "#shorts" not in final_title.lower():
         final_title = f"{final_title} #Shorts"
 
     project = ArticleVideoProject(

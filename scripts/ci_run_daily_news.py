@@ -31,20 +31,20 @@ VIRAL_ENABLED = False
 
 SCHEDULE_RULES = [
     # (name, utc_hour_range, min_topics, aspect_ratio)
-    # 06:03 VN (UTC+7) = 23:03 UTC (previous day)
-    ("tin_moi", range(22, 24), 8, "16:9"),
-    # 12:03 VN (UTC+7) = 05:03 UTC (YouTube Shorts <= 25s)
+    # 06:03 VN (UTC+7) = 23:03 UTC (ngày hôm trước) -> Tin Mới (Thế giới + Chiến sự + Thể thao 16:9)
+    ("tin_moi", range(22, 24), 9, "16:9"),
+    # 12:03 VN (UTC+7) = 05:03 UTC -> Shorts Tin Vui (9:16 <= 25s)
     ("hope", range(3, 8), 1, "9:16"),
-    # 17:33 VN (UTC+7) = 10:33 UTC
-    ("tin_nong", range(8, 22), 8, "16:9"),
+    # 17:33 VN (UTC+7) = 10:33 UTC -> Shorts Tin AI Nổi Bật (9:16 <= 25s)
+    ("ai", range(8, 22), 1, "9:16"),
 ]
 
 
 def resolve_category_from_utc() -> tuple[str, str, int]:
     """Auto-detect category, aspect ratio, and topic count from current UTC time.
 
-    Targets (UTC): tin_moi 23:03, hope 05:03, tin_nong 10:33. The day is partitioned
-    so that GitHub's (sometimes large) cron start delays still resolve correctly.
+    Targets (UTC): tin_moi 23:03 (06:03 VN), hope 05:03 (12:03 VN), ai 10:33 (17:33 VN).
+    The day is partitioned so that GitHub's cron start delays still resolve correctly.
     """
     now_utc = datetime.now(timezone.utc)
     hour = now_utc.hour
@@ -53,16 +53,16 @@ def resolve_category_from_utc() -> tuple[str, str, int]:
 
     logger.info("Current UTC time: %02d:%02d (Hour %d)", hour, minute, hour)
 
-    # Tin Mới: 22:00 - 03:00 UTC (target 23:03 UTC = 06:03 VN)
+    # Tin Mới: 22:00 - 03:00 UTC (target 23:03 UTC = 06:03 VN) -> Thế giới + Chiến sự + Thể thao (9 tin 16:9)
     if total_minutes >= 22 * 60 or total_minutes < 3 * 60:
-        return "tin_moi", "16:9", 8
+        return "tin_moi", "16:9", 9
 
-    # Short Tin Vui: 03:00 - 08:00 UTC (target 05:03 UTC = 12:03 VN)
+    # Short Tin Vui: 03:00 - 08:00 UTC (target 05:03 UTC = 12:03 VN) -> 1 tin vui <= 25s (9:16)
     if 3 * 60 <= total_minutes < 8 * 60:
         return "hope", "9:16", 1
 
-    # Tin Nóng: 08:00 - 22:00 UTC (target 10:33 UTC = 17:33 VN)
-    return "tin_nong", "16:9", 8
+    # Short Tin AI Nổi Bật: 08:00 - 22:00 UTC (target 10:33 UTC = 17:33 VN) -> 1 tin AI đột phá <= 25s (9:16)
+    return "ai", "9:16", 1
 
 
 def setup_ci_environment() -> None:
@@ -132,7 +132,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="HaizFlow CI / Cloud Runner for Daily News")
     parser.add_argument(
         "--category",
-        choices=["auto", "tin_moi", "hope", "viral", "tin_nong"],
+        choices=["auto", "tin_moi", "hope", "ai", "tin_nong", "viral"],
         default="auto",
         help="Category to produce. 'auto' calculates the category based on current UTC time.",
     )
@@ -150,8 +150,10 @@ def main() -> int:
         category, default_ar, default_topics = resolve_category_from_utc()
     else:
         category = args.category
-        if category in ("hope", "viral"):
+        if category in ("hope", "viral", "ai"):
             default_ar, default_topics = "9:16", 1
+        elif category == "tin_moi":
+            default_ar, default_topics = "16:9", 9
         else:
             default_ar, default_topics = "16:9", 8
 

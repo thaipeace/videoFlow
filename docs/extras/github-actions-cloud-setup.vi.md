@@ -10,9 +10,9 @@
 * Sử dụng máy ảo Ubuntu cực mạnh của GitHub (4 vCPU, 16 GB RAM, có sẵn FFmpeg & Python).
 * **Hoàn toàn miễn phí** (chỉ tốn ~350 phút/tháng trên 2,000 phút miễn phí hàng tháng của GitHub).
 * **3 Khung giờ tự động mỗi ngày (Tính theo giờ Việt Nam UTC+7):**
-  1. **06:03 Sáng:** Bản tin **Tin Mới** (`tin_moi`, 16:9 Ngang 1080p) — cron `3 23 * * *` (UTC).
-  2. **12:03 Trưa:** Shorts **Tin Vui** (`hope`, 9:16 Dọc) — cron `3 5 * * *` (UTC).
-  3. **17:33 Chiều:** Bản tin **Tin Nóng** (`tin_nong`, 16:9 Ngang 1080p) — cron `33 10 * * *` (UTC).
+  1. **06:03 Sáng:** Bản tin **Tin Mới** (`tin_moi`, 16:9 Ngang 1080p, 9 sự kiện chuyên sâu: Thế giới + Chiến sự + Thể thao) — cron `3 23 * * *` (UTC).
+  2. **12:03 Trưa:** Shorts **Tin Vui** (`hope`, 9:16 Dọc <= 25s) — cron `3 5 * * *` (UTC).
+  3. **17:33 Chiều:** Shorts **Tin AI Nổi Bật** (`ai`, 9:16 Dọc <= 25s) — cron `33 10 * * *` (UTC).
 * ⏸️ **Shorts Tin Độc Lạ (`viral`) đang TẠM TẮT** cho đến khi có cách làm chất lượng hơn (bật lại bằng `VIRAL_ENABLED` trong `scripts/ci_run_daily_news.py`).
 
 ---

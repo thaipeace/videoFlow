@@ -2,11 +2,11 @@ name: Automated Daily News Broadcast Pipeline
 
 on:
   schedule:
-    # 06:03 VN (UTC+7) = 23:03 UTC (ngày hôm trước) -> Tin Mới (Thế giới + Thể thao 16:9)
+    # 06:03 VN (UTC+7) = 23:03 UTC (ngày hôm trước) -> Tin Mới (Thế giới + Chiến sự + Thể thao 16:9)
     - cron: '3 23 * * *'
     # 12:03 VN (UTC+7) = 05:03 UTC -> Shorts Tin Vui (9:16)
     - cron: '3 5 * * *'
-    # 17:33 VN (UTC+7) = 10:33 UTC -> Tin Nóng (Chiến sự + Công nghệ 16:9)
+    # 17:33 VN (UTC+7) = 10:33 UTC -> Shorts Tin AI Nổi Bật (9:16)
     - cron: '33 10 * * *'
     # Shorts Tin Độc Lạ (viral) đang TẠM TẮT cho đến khi có cách làm chất lượng hơn.
   workflow_dispatch:
@@ -20,6 +20,7 @@ on:
           - 'auto'
           - 'tin_moi'
           - 'hope'
+          - 'ai'
           - 'tin_nong'
       upload_youtube:
         description: 'Tự động đăng tải lên YouTube'
@@ -96,7 +97,7 @@ jobs:
           case "$EVENT_SCHEDULE" in
             '3 23 * * *')  INPUT_CAT="tin_moi" ;;
             '3 5 * * *')   INPUT_CAT="hope" ;;
-            '33 10 * * *') INPUT_CAT="tin_nong" ;;
+            '33 10 * * *') INPUT_CAT="ai" ;;
           esac
           echo "Resolved category: $INPUT_CAT"
           YT_FLAG=""

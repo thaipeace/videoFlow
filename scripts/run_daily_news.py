@@ -132,11 +132,11 @@ def main() -> int:
         "--category",
         choices=[
             "tin_moi", "tin_nong", "morning", "evening", "world_sports", "war_tech",
-            "world", "war", "tech", "sports", "viral", "hope",
+            "world", "war", "tech", "sports", "viral", "hope", "ai", "ai_tech", "tin_ai",
             "thoisu", "chiensu", "congnghe", "thethao", "tinla", "docla", "tinvui", "tin_vui", "hyvong"
         ],
         default="tin_moi",
-        help="Chủ đề bản tin: 'tin_moi'/'morning' (Bản tin mới: Thế giới + Thể thao 16:9), 'tin_nong'/'evening' (Bản tin nóng: Chiến sự + Công nghệ 16:9), 'hope'/'tinvui' (Short Tin vui 9:16), 'viral'/'docla' (Short Tin độc lạ 9:16). Mặc định: tin_moi.",
+        help="Chủ đề bản tin: 'tin_moi' (Bản tin mới: Thế giới + Chiến sự + Thể thao 16:9), 'hope' (Short Tin vui 9:16), 'ai' (Short Tin AI đột phá 9:16). Mặc định: tin_moi.",
     )
     parser.add_argument(
         "--max-topics", 
@@ -208,10 +208,14 @@ def main() -> int:
     cat_norm = args.category.strip().lower()
     aspect_ratio_to_use = args.aspect_ratio
     max_topics_to_use = args.max_topics
-    if cat_norm in ("viral", "tinla", "docla", "hope", "tinvui", "tin_vui", "hyvong"):
+    if cat_norm in ("viral", "tinla", "docla", "hope", "tinvui", "tin_vui", "hyvong", "ai", "ai_tech", "tin_ai"):
         aspect_ratio_to_use = "9:16"
-        if max_topics_to_use is None or max_topics_to_use <= 0 or max_topics_to_use in (3, 7, 8):
+        if max_topics_to_use is None or max_topics_to_use <= 0 or max_topics_to_use in (3, 7, 8, 9):
             max_topics_to_use = 1
+    elif cat_norm in ("tin_moi", "morning"):
+        aspect_ratio_to_use = "16:9"
+        if max_topics_to_use is None or max_topics_to_use == 8:
+            max_topics_to_use = 9
     else:
         # Standard long-form news (world, war, tech, sports) must strictly be 16:9 widescreen
         aspect_ratio_to_use = "16:9"
@@ -325,6 +329,8 @@ def main() -> int:
                             target_playlist = s_data.get("youtube_playlist_viral", "Bản tin thế giới")
                         elif category in ("hope", "tinvui", "tin_vui", "hyvong"):
                             target_playlist = s_data.get("youtube_playlist_hope", "Bản tin thế giới")
+                        elif category in ("ai", "ai_tech", "tin_ai"):
+                            target_playlist = s_data.get("youtube_playlist_ai", s_data.get("youtube_playlist_tech", "Bản tin thế giới"))
                         elif category in ("war", "chiensu"):
                             target_playlist = s_data.get("youtube_playlist_war", "Bản tin thế giới")
                         else:
