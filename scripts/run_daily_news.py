@@ -194,6 +194,7 @@ def main() -> int:
     settings_file = Path(RUNTIME_DATA_DIR) / "daily_news_settings.json"
     cfg_auto_yt = False
     yt_privacy = "public"
+    s_data: dict = {}
     if settings_file.is_file():
         try:
             s_data = json.loads(settings_file.read_text(encoding="utf-8"))

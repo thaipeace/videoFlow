@@ -1976,22 +1976,22 @@ def fetch_world_news_rss(
                     continue
 
                 # For war category, strictly ensure it is military/conflict, and filter out sports & lifestyle
-                if category == "war" and not is_strict_war_news(title, desc):
+                if norm_cat == "war" and not is_strict_war_news(title, desc):
                     logger.debug("Filtered out non-war/sports item from war: %s", title)
                     continue
 
                 # For sports category, strictly ensure it is football/soccer related, not other sports
-                if category == "sports" and is_non_football_news(title, desc):
+                if norm_cat == "sports" and is_non_football_news(title, desc):
                     logger.info("Filtered out non-football sports item: %s", title)
                     continue
 
                 # For viral category, strictly filter out mainstream world politics, professional sports, and corporate tech
-                if category == "viral" and is_mainstream_hard_news(title, desc):
+                if norm_cat == "viral" and is_mainstream_hard_news(title, desc):
                     logger.debug("Filtered out mainstream world/tech/sports item from viral: %s", title)
                     continue
 
                 # For viral category, filter out low-novelty mundane items (auctions, dry surveys, minor flight delays, routine lotteries)
-                if category == "viral" and is_low_novelty_viral_news(title, desc):
+                if norm_cat == "viral" and is_low_novelty_viral_news(title, desc):
                     logger.debug("Filtered out low-novelty item from viral: %s", title)
                     continue
 
@@ -2001,8 +2001,8 @@ def fetch_world_news_rss(
                     continue
 
                 # Time window constraint: viral within ~36h, hope within 48h
-                if category in ("viral", "hope") and pub:
-                    if not is_within_time_window(pub, export_dt, category=category):
+                if norm_cat in ("viral", "hope") and pub:
+                    if not is_within_time_window(pub, export_dt, category=norm_cat):
                         logger.debug("Filtered out %s item outside freshness window: %s (%s)", category, title, pub)
                         continue
 
@@ -2091,7 +2091,7 @@ def fetch_world_news_rss(
             break
 
     # Cluster multi-feed reports into distinct topics
-    clustered_items = cluster_and_rank_news_topics(raw_items, max_topics=max_items, category=category)
+    clustered_items = cluster_and_rank_news_topics(raw_items, max_topics=max_items, category=norm_cat)
 
     # Deep article scraping: fetch substantive paragraphs from source publishers for the selected topics
     if scrape_article_body:
