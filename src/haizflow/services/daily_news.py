@@ -170,6 +170,12 @@ VIRAL_RSS_FEEDS = [
     "https://www.boredpanda.com/feed/",
     # 14. Reddit Curiosity & Oddities (r/Damnthatsinteresting, r/BeAmazed)
     "https://news.google.com/rss/search?q=(site:reddit.com/r/Damnthatsinteresting+OR+site:reddit.com/r/BeAmazed)+AND+(video+OR+story+OR+viral)+-politics+-sports+-vietnam&hl=en-US&gl=US&ceid=US:en",
+    # 15. Reddit Hilarious Pets & Animals (r/AnimalsBeingDerps, r/Eyebleach, r/aww)
+    "https://news.google.com/rss/search?q=(site:reddit.com/r/AnimalsBeingDerps+OR+site:reddit.com/r/Eyebleach+OR+site:reddit.com/r/aww)+AND+(video+OR+clip+OR+cat+OR+dog)+-politics+-sports+-vietnam&hl=en-US&gl=US&ceid=US:en",
+    # 16. Wholesome & Funny Pet Memes (r/Catmemes, r/dogmemes, r/wholesomememes)
+    "https://news.google.com/rss/search?q=(site:reddit.com/r/Catmemes+OR+site:reddit.com/r/dogmemes+OR+site:reddit.com/r/wholesomememes)+AND+(video+OR+photo)+-politics+-vietnam&hl=en-US&gl=US&ceid=US:en",
+    # 17. Caught on Camera Funny Animals & Pets (Clumsy cats, silly dogs, comedy wildlife)
+    "https://news.google.com/rss/search?q=(%22caught+on+petcam%22+OR+%22pets+being+derps%22+OR+%22hilarious+dog%22+OR+%22funny+cat+video%22)+AND+(viral+OR+video)+-politics+-vietnam&hl=en-US&gl=US&ceid=US:en",
 ]
 
 # Comprehensive International Armed Conflict, War & Military RSS Feeds
@@ -640,8 +646,10 @@ def is_within_time_window(
         return (now - dt) <= timedelta(hours=max_hours)
 
     if norm_cat == "viral":
-        start_dt, end_dt = get_viral_news_time_window(export_dt)
-        return start_dt <= dt <= end_dt
+        # Viral clips / funny moments have NO freshness window constraints.
+        # Evergreen viral humor, cute animals, and funny clips from any date are accepted.
+        # Deduplication is handled strictly via published_news_history.json.
+        return True
     elif norm_cat == "hope":
         # Limit to 48 hours to avoid weeks-old articles while allowing quality research pieces
         return (now - dt) <= timedelta(hours=48)
@@ -872,6 +880,7 @@ class DailyNewsScene:
     image_url: str = ""
     social_platform: str = "x"
     source: str = ""  # Human-readable source name (e.g. 'Bored Panda', 'BBC News') for the source frame badge
+    source_url: str = ""  # Original article/post URL for attribution and deep linking
 
 
 @dataclass
@@ -2001,8 +2010,8 @@ def fetch_world_news_rss(
                     logger.info("Filtered out duplicate item from 7-day published history: %s", title)
                     continue
 
-                # Time window constraint: viral within ~36h, hope within 48h
-                if norm_cat in ("viral", "hope") and pub:
+                # Time window constraint: hope within 48h (viral has NO time restriction, accepts all dates)
+                if norm_cat == "hope" and pub:
                     if not is_within_time_window(pub, export_dt, category=norm_cat):
                         logger.debug("Filtered out %s item outside freshness window: %s (%s)", category, title, pub)
                         continue
@@ -3232,6 +3241,7 @@ def fallback_offline_news_script(
                     image_url=item.image_url,
                     social_platform=item.social_platform,
                     source=item.source,
+                    source_url=item.link,
                 )
             )
             # Scene 1: Core Story (25-30 words)
@@ -3245,6 +3255,7 @@ def fallback_offline_news_script(
                     image_url=item.image_url,
                     social_platform=item.social_platform,
                     source=item.source,
+                    source_url=item.link,
                 )
             )
             # Scene 2: Outro & CTA (12-14 words)
@@ -3328,6 +3339,7 @@ def fallback_offline_news_script(
                     image_url=item.image_url,
                     social_platform=item.social_platform,
                     source=item.source,
+                    source_url=item.link,
                 )
             )
             sc_idx += 1
@@ -3480,6 +3492,7 @@ def fallback_offline_news_script(
                     image_url=item.image_url,
                     social_platform=item.social_platform,
                     source=item.source,
+                    source_url=item.link,
                 )
             )
             sc_idx += 1
@@ -3624,6 +3637,7 @@ def create_social_post_visual(
     author_name: str = "",
     author_handle: str = "",
     source_name: str = "",
+    source_url: str = "",
     image_path: Optional[str] = None,
     dest_path: Path = Path("scene.jpg"),
     aspect_ratio: AspectRatio = "9:16",
@@ -3677,6 +3691,20 @@ def create_social_post_visual(
         plat_name = "X (Twitter)"
         plat_color = (29, 155, 240)
         default_handle = author_handle or "@TrendingWorld · Vừa đăng"
+
+    # Refine author handle if original source_url is available
+    if source_url:
+        try:
+            parsed = urllib.parse.urlparse(source_url)
+            clean_netloc = parsed.netloc.replace("www.", "")
+            if "reddit.com" in clean_netloc:
+                m_sub = re.search(r"/(r/[^/]+)", parsed.path)
+                sub_name = m_sub.group(1) if m_sub else "reddit.com"
+                default_handle = author_handle or f"{sub_name} · Khoảnh khắc hài hước"
+            elif clean_netloc:
+                default_handle = author_handle or f"@{clean_netloc} · Clip chia sẻ"
+        except Exception:
+            pass
 
     # If a real source name is provided, use it on the badge to correctly credit the publisher.
     # This replaces the generic social platform name (e.g. "X (Twitter)") with the actual site
@@ -3891,6 +3919,7 @@ def prepare_scene_illustrations(
                 platform=scene.social_platform,
                 headline=scene.text,
                 source_name=getattr(scene, "source", ""),
+                source_url=getattr(scene, "source_url", ""),
                 image_path=str(temp_raw.resolve()) if photo_found else None,
                 dest_path=img_dest,
                 aspect_ratio=aspect_ratio,
@@ -4743,12 +4772,20 @@ def format_youtube_description_with_sources(
         sources_text = ""
         if sources_blocks:
             separator = "\n\n" if condensed_level == 0 else "\n"
+            sec_title = "🎬 NGUỒN GỐC VIDEO & TƯ LIỆU (VIDEO CREDITS & SOURCES):" if norm_cat == "viral" else "📰 NGUỒN TIN BÁO CHÍ THAM KHẢO (SOURCES):"
             sources_text = (
                 "--------------------------------------------------\n"
-                "📰 NGUỒN TIN BÁO CHÍ THAM KHẢO (SOURCES):\n"
+                f"{sec_title}\n"
                 + separator.join(sources_blocks)
                 + "\n--------------------------------------------------"
             )
+            if norm_cat == "viral":
+                sources_text += (
+                    "\n\n⚖️ BẢN QUYỀN & CHÍNH SÁCH SỬ DỤNG HỢP LÝ (FAIR USE DISCLAIMER):\n"
+                    "• Bản quyền hình ảnh & video thuộc về các tác giả / kênh gốc được ghi nhận đầy đủ ở trên.\n"
+                    "• Video được biên tập, thuyết minh và bình luận tiếng Việt theo nguyên tắc Sử dụng Hợp lý (Fair Use) nhằm mục đích giải trí, chia sẻ điều thú vị.\n"
+                    "• All rights belong to their respective owners. Content used under Fair Use for entertainment & commentary."
+                )
 
         components = [c for c in [header, sources_text, clean_hashtags] if c]
         return "\n\n".join(components)
