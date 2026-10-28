@@ -197,6 +197,7 @@ def main() -> int:
 
     # Load social upload settings
     from haizflow.config import RUNTIME_DATA_DIR
+    settings_file = Path(RUNTIME_DATA_DIR) / "daily_news_settings.json"
     cfg_auto_yt = False
     yt_privacy = args.privacy or "private"
     s_data: dict = {}
