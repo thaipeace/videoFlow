@@ -25,21 +25,27 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# Shorts Tin Độc Lạ (viral) is temporarily disabled until a better approach is found.
+# Flip to True to re-enable (also re-add the cron + 'viral' option in daily_news.yml).
+VIRAL_ENABLED = False
+
 SCHEDULE_RULES = [
     # (name, utc_hour_range, min_topics, aspect_ratio)
-    # 07:30 VN (UTC+7) = 00:30 UTC
-    ("tin_moi", range(0, 3), 8, "16:9"),
-    # 11:30 VN (UTC+7) = 04:30 UTC (YouTube Shorts <= 25s)
-    ("hope", range(3, 5), 1, "9:16"),
-    # 12:00 VN (UTC+7) = 05:00 UTC (YouTube Shorts <= 25s)
-    ("viral", range(5, 7), 1, "9:16"),
-    # 17:30 VN (UTC+7) = 10:30 UTC
-    ("tin_nong", range(9, 13), 8, "16:9"),
+    # 06:03 VN (UTC+7) = 23:03 UTC (previous day)
+    ("tin_moi", range(22, 24), 8, "16:9"),
+    # 12:03 VN (UTC+7) = 05:03 UTC (YouTube Shorts <= 25s)
+    ("hope", range(3, 8), 1, "9:16"),
+    # 17:33 VN (UTC+7) = 10:33 UTC
+    ("tin_nong", range(8, 22), 8, "16:9"),
 ]
 
 
 def resolve_category_from_utc() -> tuple[str, str, int]:
-    """Auto-detect category, aspect ratio, and topic count from current UTC time."""
+    """Auto-detect category, aspect ratio, and topic count from current UTC time.
+
+    Targets (UTC): tin_moi 23:03, hope 05:03, tin_nong 10:33. The day is partitioned
+    so that GitHub's (sometimes large) cron start delays still resolve correctly.
+    """
     now_utc = datetime.now(timezone.utc)
     hour = now_utc.hour
     minute = now_utc.minute
@@ -47,26 +53,16 @@ def resolve_category_from_utc() -> tuple[str, str, int]:
 
     logger.info("Current UTC time: %02d:%02d (Hour %d)", hour, minute, hour)
 
-    # 1. Check specific time windows (+- 45 min around target schedules)
-    # Target 07:30 VN = 00:30 UTC (30 mins), tolerate GitHub start delays
-    if 0 <= total_minutes < 180:
+    # Tin Mới: 22:00 - 03:00 UTC (target 23:03 UTC = 06:03 VN)
+    if total_minutes >= 22 * 60 or total_minutes < 3 * 60:
         return "tin_moi", "16:9", 8
 
-    # Target 11:30 VN = 04:30 UTC (270 mins)
-    if 240 <= total_minutes < 290:
+    # Short Tin Vui: 03:00 - 08:00 UTC (target 05:03 UTC = 12:03 VN)
+    if 3 * 60 <= total_minutes < 8 * 60:
         return "hope", "9:16", 1
 
-    # Target 12:00 VN = 05:00 UTC (300 mins)
-    if 290 <= total_minutes < 360:
-        return "viral", "9:16", 1
-
-    # Target 17:30 VN = 10:30 UTC (630 mins)
-    if 580 <= total_minutes <= 720:
-        return "tin_nong", "16:9", 8
-
-    # Default fallback
-    logger.info("Time does not match a specific midday/evening slot. Defaulting to 'tin_moi'.")
-    return "tin_moi", "16:9", 8
+    # Tin Nóng: 08:00 - 22:00 UTC (target 10:33 UTC = 17:33 VN)
+    return "tin_nong", "16:9", 8
 
 
 def setup_ci_environment() -> None:
@@ -158,6 +154,20 @@ def main() -> int:
             default_ar, default_topics = "9:16", 1
         else:
             default_ar, default_topics = "16:9", 8
+
+    if category == "viral" and not VIRAL_ENABLED:
+        logger.warning("Category 'viral' (Shorts Tin Độc Lạ) is temporarily DISABLED. Skipping run.")
+        summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+        if summary_file:
+            try:
+                Path(summary_file).write_text(
+                    "## ⏸️ Shorts Tin Độc Lạ (viral) đang tạm tắt\n"
+                    "Bỏ qua lần chạy này cho đến khi có cách làm chất lượng hơn.\n",
+                    encoding="utf-8",
+                )
+            except Exception:
+                pass
+        return 0
 
     aspect_ratio = args.aspect_ratio or default_ar
     max_topics = args.max_topics or default_topics

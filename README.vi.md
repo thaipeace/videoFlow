@@ -38,11 +38,11 @@
 
 Hệ thống cho phép vận hành một kênh tin tức YouTube tự động 100%, không cần can thiệp thủ công hàng ngày:
 
-### 1. Chiến lược xuất bản 3 khung giờ (4 bản tin mỗi ngày)
-* **05:30 Sáng — Tin Mới (`tin_moi`, 16:9 Ngang 1080p):** Hợp nhất Thời sự Thế giới và Thể thao đỉnh cao. Phong cách truyền hình quốc tế hiện đại, intro địa cầu 3D xoay chuyển, gam màu xanh Navy `#17365D`.
-* **11:30 Trưa — Shorts Tin Vui (`hope`, 9:16 Dọc):** Điểm tin phát minh khoa học, y học, năng lượng xanh và câu chuyện truyền cảm hứng (nhịp điệu 45–55 giây).
-* **12:00 Trưa — Shorts Tin Độc Lạ (`viral`, 9:16 Dọc):** Tin tức kỳ thú, trào lưu mạng xã hội, tình huống hài hước dí dỏm.
-* **17:30 Chiều — Tin Nóng (`tin_nong`, 16:9 Ngang 1080p):** Hợp nhất Điểm nóng Chiến sự / Địa chính trị và Đột phá Công nghệ / Bán dẫn. Phong cách phòng tác chiến quân sự, radar quét bảo mật, gam màu đỏ sẫm `#9F2028`.
+### 1. Chiến lược xuất bản 3 khung giờ (3 bản tin mỗi ngày trên GitHub Actions)
+* **06:03 Sáng — Tin Mới (`tin_moi`, 16:9 Ngang 1080p):** Hợp nhất Thời sự Thế giới và Thể thao đỉnh cao. Phong cách truyền hình quốc tế hiện đại, intro địa cầu 3D xoay chuyển, gam màu xanh Navy `#17365D`.
+* **12:03 Trưa — Shorts Tin Vui (`hope`, 9:16 Dọc):** Điểm tin phát minh khoa học, y học, năng lượng xanh và câu chuyện truyền cảm hứng (nhịp điệu 45–55 giây).
+* ⏸️ **Shorts Tin Độc Lạ (`viral`, 9:16 Dọc) — TẠM TẮT** cho đến khi có cách làm chất lượng hơn.
+* **17:33 Chiều — Tin Nóng (`tin_nong`, 16:9 Ngang 1080p):** Hợp nhất Điểm nóng Chiến sự / Địa chính trị và Đột phá Công nghệ / Bán dẫn. Phong cách phòng tác chiến quân sự, radar quét bảo mật, gam màu đỏ sẫm `#9F2028`.
 
 ### 2. Cơ chế thu thập độc lập & Bộ lọc nội dung thép
 * **Thu thập riêng biệt từng chuyên mục:** Tin thời sự lấy từ Reuters, AP, BBC, NPR, DW; Tin thể thao lấy từ BBC Sport, Sky Sports; Tin chiến sự lấy từ ISW, Al Jazeera War; Tin công nghệ lấy từ The Verge, TechCrunch. Các luồng lấy tin chạy riêng biệt để đảm bảo chất lượng cao nhất trước khi AI tổng hợp.
