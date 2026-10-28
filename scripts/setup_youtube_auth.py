@@ -13,6 +13,18 @@ import logging
 import sys
 from pathlib import Path
 
+# Reconfigure UTF-8 encoding for Windows console
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
@@ -45,14 +57,14 @@ def main() -> int:
         token = youtube_direct.get_saved_token()
         client_id, client_secret = youtube_direct.get_client_credentials()
         if not token or not client_id or not client_secret:
-            print("\n❌ Chưa có thông tin xác thực YouTube.")
+            print("\n[!] Chưa có thông tin xác thực YouTube trên máy.")
             return 1
         try:
             ch_info = youtube_direct.get_channel_info()
-            print(f"\n✅ Đã kết nối kênh: {ch_info.get('title', 'Unknown')} (ID: {ch_info.get('id', '')})")
+            print(f"\n[OK] Đã kết nối kênh: {ch_info.get('title', 'Unknown')} (ID: {ch_info.get('id', '')})")
             return 0
         except Exception as exc:
-            print(f"\n❌ Lỗi xác thực token: {exc}")
+            print(f"\n[ERR] Lỗi xác thực token: {exc}")
             return 1
 
     # 1. Resolve client credentials
@@ -75,24 +87,24 @@ def main() -> int:
                 if c_id and c_secret:
                     youtube_direct.save_client_credentials(c_id, c_secret)
                 else:
-                    print("\n❌ Thiếu Client ID hoặc Client Secret. Hủy thao tác.")
+                    print("\n[!] Thiếu Client ID hoặc Client Secret. Hủy thao tác.")
                     return 1
 
-    print(f"\n✓ Client ID: {c_id[:20]}...{c_id[-10:] if len(c_id) > 30 else ''}")
-    print("✓ Đang mở trình duyệt để bạn đăng nhập và cấp quyền cho kênh YouTube...")
+    print(f"\n[OK] Client ID: {c_id[:20]}...{c_id[-10:] if len(c_id) > 30 else ''}")
+    print("-> Đang mở trình duyệt để bạn đăng nhập và cấp quyền cho kênh YouTube...")
 
     try:
         token_data = youtube_direct.start_oauth_flow(client_id=c_id, client_secret=c_secret)
-        print("\n🎉 ĐĂNG NHẬP THÀNH CÔNG!")
+        print("\n[OK] ĐĂNG NHẬP THÀNH CÔNG!")
     except Exception as exc:
-        print(f"\n❌ Đăng nhập thất bại: {exc}")
+        print(f"\n[ERR] Đăng nhập thất bại: {exc}")
         return 1
 
     try:
         ch_info = youtube_direct.get_channel_info()
-        print(f"📺 Kênh đã kết nối: {ch_info.get('title', 'Unknown')} (ID: {ch_info.get('id', '')})")
+        print(f"-> Kênh đã kết nối: {ch_info.get('title', 'Unknown')} (ID: {ch_info.get('id', '')})")
     except Exception as ch_err:
-        print(f"⚠️ Đã lưu token nhưng không lấy được thông tin kênh: {ch_err}")
+        print(f"[!] Đã lưu token nhưng không lấy được thông tin kênh: {ch_err}")
 
     # Prepare JSON secrets for GitHub Actions
     token_json_str = json.dumps(token_data, indent=2)
@@ -104,7 +116,7 @@ def main() -> int:
     }, indent=2)
 
     print("\n" + "=" * 72)
-    print("  📋 HƯỚNG DẪN CẬP NHẬT GITHUB SECRETS (ĐỂ GITHUB ACTIONS TỰ UPLOAD)")
+    print("  HƯỚNG DẪN CẬP NHẬT GITHUB SECRETS (ĐỂ GITHUB ACTIONS TỰ UPLOAD)")
     print("=" * 72)
     print("1. Mở trang Secrets của repo:")
     print("   https://github.com/thaipeace/videoFlow/settings/secrets/actions\n")
@@ -118,7 +130,7 @@ def main() -> int:
     print("-" * 50)
     print(client_secret_json_str)
     print("-" * 50)
-    print("\n✓ Đã lưu tệp cục bộ tại:")
+    print("\n[OK] Đã lưu tệp cục bộ tại:")
     print(f"   - {token_file}")
     print(f"   - {secret_file}")
     print("=" * 72 + "\n")
