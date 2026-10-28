@@ -27,8 +27,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 SCHEDULE_RULES = [
     # (name, utc_hour_range, min_topics, aspect_ratio)
-    # 05:30 VN (UTC+7) = 22:30 UTC previous day
-    ("tin_moi", range(21, 24), 8, "16:9"),
+    # 07:30 VN (UTC+7) = 00:30 UTC
+    ("tin_moi", range(0, 3), 8, "16:9"),
     # 11:30 VN (UTC+7) = 04:30 UTC (YouTube Shorts <= 25s)
     ("hope", range(3, 5), 1, "9:16"),
     # 12:00 VN (UTC+7) = 05:00 UTC (YouTube Shorts <= 25s)
@@ -48,8 +48,8 @@ def resolve_category_from_utc() -> tuple[str, str, int]:
     logger.info("Current UTC time: %02d:%02d (Hour %d)", hour, minute, hour)
 
     # 1. Check specific time windows (+- 45 min around target schedules)
-    # Target 05:30 VN = 22:30 UTC (1350 mins)
-    if 1300 <= total_minutes <= 1439 or 0 <= total_minutes <= 60:
+    # Target 07:30 VN = 00:30 UTC (30 mins), tolerate GitHub start delays
+    if 0 <= total_minutes < 180:
         return "tin_moi", "16:9", 8
 
     # Target 11:30 VN = 04:30 UTC (270 mins)

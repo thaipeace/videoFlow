@@ -2,8 +2,8 @@ name: Automated Daily News Broadcast Pipeline
 
 on:
   schedule:
-    # 05:30 VN (UTC+7) = 22:30 UTC previous day -> Tin Mới (Thế giới + Thể thao 16:9)
-    - cron: '30 22 * * *'
+    # 07:30 VN (UTC+7) = 00:30 UTC -> Tin Mới (Thế giới + Thể thao 16:9)
+    - cron: '30 0 * * *'
     # 11:30 VN (UTC+7) = 04:30 UTC -> Shorts Tin Vui (9:16)
     - cron: '30 4 * * *'
     # 12:00 VN (UTC+7) = 05:00 UTC -> Shorts Tin Độc Lạ (9:16)
@@ -48,6 +48,13 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Log Trigger Info
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Cron fired: ${{ github.event.schedule }}"
+          echo "Runner UTC:   $(date -u '+%Y-%m-%d %H:%M:%S')"
+          echo "Runner VN:    $(TZ=Asia/Ho_Chi_Minh date '+%Y-%m-%d %H:%M:%S')"
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
