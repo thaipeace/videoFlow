@@ -89,18 +89,18 @@ WEEKDAY_THEMES: Dict[int, Dict[str, Any]] = {
 # -----------------------------------------------------------------------------
 CATEGORY_LABEL_PALETTE: Dict[str, Dict[str, Any]] = {
     "tin_moi": {
-        "label": "BẢN TIN MỚI",
-        "hex": "#17365D",
-        "rgb": (23, 54, 93),
-        "name": "Xanh navy",
-        "desc": "Nghiêm túc, đáng tin cậy, chuyên nghiệp (theme Thời sự thế giới).",
+        "label": "TIN NÓNG",
+        "hex": "#D61E26",
+        "rgb": (214, 30, 38),
+        "name": "Đỏ tươi",
+        "desc": "Chữ trắng nền đỏ nổi bật như bản đầu tiên.",
     },
     "tin_nong": {
-        "label": "BẢN TIN NÓNG",
-        "hex": "#9F2028",
-        "rgb": (159, 32, 40),
-        "name": "Đỏ sẫm",
-        "desc": "Khẩn cấp, mạnh mẽ, kịch tính (theme Chiến sự thế giới).",
+        "label": "TIN NÓNG",
+        "hex": "#D61E26",
+        "rgb": (214, 30, 38),
+        "name": "Đỏ tươi",
+        "desc": "Khẩn cấp, mạnh mẽ, kịch tính (chữ trắng nền đỏ).",
     },
     "world": {
         "label": "BẢN TIN THỜI SỰ",
@@ -545,6 +545,10 @@ def _render_landscape_thumbnail(
     text_w = round(width * 0.62) - margin
     hook_text = (hook or "").strip().upper()
     label_text = (label or "").strip().upper()
+    if label_text in ("BẢN TIN MỚI", "TIN MỚI", "BẢN TIN NÓNG") or (
+        not label_text and (category or "").lower().strip() in ("tin_moi", "tin_nong")
+    ):
+        label_text = "TIN NÓNG"
 
     label_font = _bold_font(round(base * 0.062))
     ll, lt, lr, lb = draw.textbbox((0, 0), label_text or " ", font=label_font)

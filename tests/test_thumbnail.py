@@ -84,6 +84,8 @@ class ThumbnailTests(unittest.TestCase):
         self.assertEqual(get_weekday_hook_color(sun_dt), (244, 201, 93))
 
         # 2. Test Category Title Palette
+        self.assertEqual(get_category_label_color("TIN NÓNG", "tin_moi"), (214, 30, 38))
+        self.assertEqual(get_category_label_color("TIN NÓNG", "tin_nong"), (214, 30, 38))
         self.assertEqual(get_category_label_color("BẢN TIN THỜI SỰ", "world"), (23, 54, 93))
         self.assertEqual(get_category_label_color("BẢN TIN CÔNG NGHỆ", "tech"), (8, 127, 140))
         self.assertEqual(get_category_label_color("BẢN TIN CHIẾN SỰ", "war"), (159, 32, 40))

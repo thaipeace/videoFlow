@@ -262,8 +262,8 @@ CATEGORY_CONFIG: dict[str, dict] = {
         "default_format_label": "16:9 Ngang",
         "feeds": WORLD_RSS_FEEDS + WAR_RSS_FEEDS + SPORTS_RSS_FEEDS,
         "title_prefix": "Bản Tin Mới Toàn Cảnh",
-        "title_suffix_label": "Bản Tin Mới",
-        "default_title": "Bản Tin Mới: Thời Sự, Chiến Sự & Thể Thao Quốc Tế",
+        "title_suffix_label": "Tin Nóng",
+        "default_title": "Tin Nóng: Thời Sự, Chiến Sự & Thể Thao Quốc Tế",
         "hashtags": "#tinmoi #thoisuquocte #chiensuthegioi #thethao #bongda #thoisu24h",
         "file_prefix": "tin_moi",
         "intro_entity": "Globe world map broadcast situation room",
@@ -566,7 +566,7 @@ def ensure_date_in_title(title: str, date_val: Optional[Any] = None) -> str:
 
 
 DEFAULT_THUMBNAIL_HOOKS = {
-    "tin_moi": "TIN MỚI THẾ GIỚI",
+    "tin_moi": "TIN NÓNG THẾ GIỚI",
     "tin_nong": "TIN NÓNG ĐẶC BIỆT",
     "world": "TIN NÓNG THẾ GIỚI",
     "war": "CHIẾN SỰ: BƯỚC NGOẶT MỚI",
@@ -5323,7 +5323,7 @@ def produce_daily_news_video(
         background_music_volume=bgm_volume,
         branding_enabled=True,
         ticker_text=(digest.ticker_summary or "").strip(),
-        ticker_label="TIN VUI" if norm_cat == "hope" else ("ĐỘC LẠ" if norm_cat == "viral" else ("ĐỘT PHÁ AI" if norm_cat in ("ai", "ai_tech") else ("TIN NÓNG" if norm_cat in ("tin_nong", "war") else "TIN MỚI"))),
+        ticker_label="TIN VUI" if norm_cat == "hope" else ("ĐỘC LẠ" if norm_cat == "viral" else ("ĐỘT PHÁ AI" if norm_cat in ("ai", "ai_tech") else ("TIN NÓNG" if norm_cat in ("tin_moi", "tin_nong", "war") else "TIN MỚI"))),
         category=norm_cat,
     )
 
