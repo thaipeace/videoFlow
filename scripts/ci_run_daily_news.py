@@ -102,6 +102,78 @@ def mark_category_completed_today(category: str) -> None:
     except Exception as exc:
         logger.warning("Could not mark daily slot completed: %s", exc)
 
+
+def rollback_last_batch_for_category(category: str) -> int:
+    """Remove the most recent batch of published items for `category` from history.
+
+    Used when `--redo-last` (`redo_last=true` in GitHub Actions) is selected so that
+    if the previous video had a bug or needed a remake, those exact stories are not skipped.
+    """
+    history_file = _get_history_file()
+    if not history_file.is_file():
+        return 0
+
+    try:
+        loaded = json.loads(history_file.read_text(encoding="utf-8"))
+        if isinstance(loaded, dict):
+            items = list(loaded.get("items", []))
+            completed_slots = dict(loaded.get("completed_slots", {}))
+        elif isinstance(loaded, list):
+            items = list(loaded)
+            completed_slots = {}
+        else:
+            return 0
+
+        # Find the latest timestamp for this category
+        cat_items_with_ts: list[tuple[int, datetime, dict]] = []
+        for idx, it in enumerate(items):
+            if it.get("category") != category:
+                continue
+            ts = str(it.get("timestamp") or "")
+            try:
+                dt = datetime.fromisoformat(ts[:19])
+            except Exception:
+                dt = datetime.min
+            cat_items_with_ts.append((idx, dt, it))
+
+        if not cat_items_with_ts:
+            logger.info("[REDO-LAST] No previous items found in history for category '%s'.", category)
+            return 0
+
+        latest_dt = max(x[1] for x in cat_items_with_ts)
+        # All items of this category recorded within 120 seconds of latest_dt belong to the last batch
+        indices_to_remove: set[int] = set()
+        removed_titles: list[str] = []
+        if latest_dt != datetime.min:
+            for idx, dt, it in cat_items_with_ts:
+                if abs((latest_dt - dt).total_seconds()) <= 120.0:
+                    indices_to_remove.add(idx)
+                    removed_titles.append(str(it.get("title", "")))
+        else:
+            # Fallback: remove the very last item of this category
+            last_idx, _, last_it = cat_items_with_ts[-1]
+            indices_to_remove.add(last_idx)
+            removed_titles.append(str(last_it.get("title", "")))
+
+        new_items = [it for idx, it in enumerate(items) if idx not in indices_to_remove]
+        vn_today = datetime.now(VN_TZ).strftime("%Y-%m-%d")
+        completed_slots.pop(f"{vn_today}:{category}", None)
+
+        payload: dict = {"items": new_items}
+        if completed_slots:
+            payload["completed_slots"] = completed_slots
+        history_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        logger.info("==================================================================")
+        logger.info("  🔄 [LÀM LẠI TIN TRƯỚC] Đã hoàn tác %d tin gần nhất của chủ đề '%s':", len(indices_to_remove), category)
+        for t in removed_titles:
+            logger.info("     • %s", t)
+        logger.info("==================================================================")
+        return len(indices_to_remove)
+    except Exception as exc:
+        logger.warning("Failed to rollback last batch for category '%s': %s", category, exc)
+        return 0
+
 # Shorts Tin Độc Lạ (viral) is temporarily disabled until a better approach is found.
 # Flip to True to re-enable (also re-add the cron + 'viral' option in daily_news.yml).
 VIRAL_ENABLED = False
@@ -225,6 +297,11 @@ def main() -> int:
         default="private",
         help="YouTube privacy status (private, unlisted, public). Default: private.",
     )
+    parser.add_argument(
+        "--redo-last",
+        action="store_true",
+        help="Rollback the most recent batch of news for this category from history so it can be remade.",
+    )
     parser.add_argument("--quick-test", action="store_true", help="Run fast dry-run with mock data.")
     args = parser.parse_args()
 
@@ -265,6 +342,9 @@ def main() -> int:
     else:
         aspect_ratio = args.aspect_ratio or default_ar
         max_topics = args.max_topics or default_topics
+
+    if args.redo_last:
+        rollback_last_batch_for_category(category)
 
     # Prevent duplicate runs when GitHub Actions' cron schedule fires hours late
     # after the user has already triggered workflow_dispatch manually.

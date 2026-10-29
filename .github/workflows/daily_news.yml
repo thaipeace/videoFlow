@@ -37,6 +37,11 @@ on:
           - 'private'
           - 'unlisted'
           - 'public'
+      redo_last:
+        description: 'Làm lại bản tin vừa chạy trước đó (Hoàn tác đợt tin gần nhất của chủ đề này khỏi lịch sử để không mất tin)'
+        required: false
+        default: false
+        type: boolean
       quick_test:
         description: 'Chế độ test nhanh (Mock data xuất video trong vài giây)'
         required: false
@@ -127,12 +132,18 @@ jobs:
             TEST_FLAG="--quick-test"
           fi
           
+          REDO_FLAG=""
+          if [ "${{ github.event.inputs.redo_last }}" = "true" ]; then
+            REDO_FLAG="--redo-last"
+          fi
+          
           PRIV_FLAG="--privacy ${{ github.event.inputs.youtube_privacy || 'private' }}"
           
           python scripts/ci_run_daily_news.py \
             --category "$INPUT_CAT" \
             $YT_FLAG \
             $PRIV_FLAG \
+            $REDO_FLAG \
             $TEST_FLAG
 
       - name: Save Published News History Cache
