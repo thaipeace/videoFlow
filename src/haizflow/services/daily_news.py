@@ -2955,17 +2955,13 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
     if scenes:
         scenes[0].text = strip_leading_greeting(scenes[0].text)
 
-    # Enforce strict word count budget for 1-topic Shorts (<= 25s duration)
+    # Enforce word count budget for 1-topic Shorts at sentence boundaries ONLY
+    # (never cut a sentence mid-phrase like words[:28] which loses the end of the sentence).
     if category in ("viral", "hope", "ai") and max_topics == 1:
-        total_words = sum(len(sc.text.split()) for sc in scenes)
-        if total_words > 60:
-            logger.info("Shorts script total words (%d) exceeds 60 words. Trimming slightly to maintain <= 25s duration.", total_words)
-            if len(scenes) >= 2 and len(scenes[1].text.split()) > 30:
-                words = scenes[1].text.split()
-                scenes[1].text = " ".join(words[:28]).rstrip(",;-") + "."
-            if len(scenes) >= 3 and len(scenes[2].text.split()) > 14:
-                words = scenes[2].text.split()
-                scenes[2].text = " ".join(words[:13]).rstrip(",;-") + "."
+        if len(scenes) >= 2:
+            scenes[1].text = _trim_to_complete_sentence(scenes[1].text, max_words=38)
+        if len(scenes) >= 3:
+            scenes[2].text = _trim_to_complete_sentence(scenes[2].text, max_words=20)
 
     hook_title = str(parsed.get("hook_title") or "").strip()
     if not hook_title:
@@ -3320,6 +3316,38 @@ def format_source_attribution_lead_in(source: str, topic_index: int) -> str:
     return patterns[topic_index % len(patterns)]
 
 
+def _trim_to_complete_sentence(text: str, max_words: int = 38) -> str:
+    """Keep complete sentences up to `max_words` without EVER cutting mid-sentence.
+
+    If the first sentence alone exceeds `max_words`, the entire first sentence is still
+    preserved intact so the narrator never stops mid-phrase.
+    """
+    cleaned = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not cleaned:
+        return ""
+    if len(cleaned.split()) <= max_words:
+        return cleaned if cleaned[-1] in ".!?" else cleaned + "."
+
+    sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", cleaned) if s.strip()]
+    if not sentences:
+        return cleaned if cleaned[-1] in ".!?" else cleaned + "."
+
+    kept: List[str] = [sentences[0]]
+    current_words = len(sentences[0].split())
+    for s in sentences[1:]:
+        w_count = len(s.split())
+        if current_words + w_count <= max_words:
+            kept.append(s)
+            current_words += w_count
+        else:
+            break
+
+    result = " ".join(kept).strip()
+    if result and result[-1] not in ".!?":
+        result += "."
+    return result
+
+
 def cook_summary_into_vietnamese(item: WorldNewsItem, vi_title: str) -> str:
     """Cook raw article paragraphs into natural, non-repetitive Vietnamese narrative."""
     source_text = item.full_text if item.full_text and len(item.full_text) > 80 else item.summary
@@ -3336,8 +3364,8 @@ def cook_summary_into_vietnamese(item: WorldNewsItem, vi_title: str) -> str:
     # Pre-normalize English idioms before translation
     cleaned = normalize_english_journalism(cleaned)
 
-    # Translate substantive paragraphs with increased depth
-    vi_full = translate_text_en_to_vi(cleaned[:1000])
+    # Translate substantive paragraphs with increased depth (trim only at sentence boundary)
+    vi_full = translate_text_en_to_vi(_trim_to_complete_sentence(cleaned, max_words=180))
 
     # Split into sentences and eliminate sentences that repeat the title
     raw_sentences = [s.strip() for s in re.split(r"[.!?]+", vi_full) if len(s.strip()) > 15]
@@ -3361,14 +3389,14 @@ def cook_summary_into_vietnamese(item: WorldNewsItem, vi_title: str) -> str:
     # If no sentences survived, translate backup text or Wikipedia summary
     backup_text = clean_html_text(item.summary) if item.summary else clean_html_text(item.full_text)
     if backup_text:
-        vi_backup = translate_text_en_to_vi(backup_text[:400])
+        vi_backup = translate_text_en_to_vi(_trim_to_complete_sentence(backup_text, max_words=80))
         if vi_backup and len(vi_backup) > 20:
             res = vi_backup if vi_backup.endswith(".") else vi_backup + "."
             return normalize_vietnamese_journalism(res)
 
     wiki = get_wikipedia_context(extract_search_keywords_from_headline(item.title))
     if wiki:
-        vi_wiki = translate_text_en_to_vi(wiki[:350])
+        vi_wiki = translate_text_en_to_vi(_trim_to_complete_sentence(wiki, max_words=70))
         if vi_wiki:
             res = vi_wiki if vi_wiki.endswith(".") else vi_wiki + "."
             return normalize_vietnamese_journalism(res)
@@ -3406,8 +3434,7 @@ def fallback_offline_news_script(
             vi_title = translate_text_en_to_vi(clean_full_headline)
             vi_titles.append(vi_title)
             cooked_facts = cook_summary_into_vietnamese(item, vi_title)
-            fact_words = cooked_facts.split()
-            core_narrative = " ".join(fact_words[:26]).rstrip(",;-") + "." if len(fact_words) > 26 else cooked_facts
+            core_narrative = _trim_to_complete_sentence(cooked_facts, max_words=38)
             core_sub = extract_core_visual_subject(clean_full_headline)
             ai_prompt_val = f"photorealistic news photography of {core_sub}, authentic real-world news photo style"
 
@@ -3562,8 +3589,7 @@ def fallback_offline_news_script(
             vi_title = translate_text_en_to_vi(clean_full_headline)
             vi_titles.append(vi_title)
             cooked_facts = cook_summary_into_vietnamese(item, vi_title)
-            fact_words = cooked_facts.split()
-            core_narrative = " ".join(fact_words[:26]).rstrip(",;-") + "." if len(fact_words) > 26 else cooked_facts
+            core_narrative = _trim_to_complete_sentence(cooked_facts, max_words=38)
             core_sub = extract_core_visual_subject(clean_full_headline)
             ai_prompt_val = f"cinematic news photography of {core_sub}, clean bright futuristic lighting, uplifting science aesthetic"
 
@@ -3715,8 +3741,7 @@ def fallback_offline_news_script(
             vi_title = translate_text_en_to_vi(clean_full_headline)
             vi_titles.append(vi_title)
             cooked_facts = cook_summary_into_vietnamese(item, vi_title)
-            fact_words = cooked_facts.split()
-            core_narrative = " ".join(fact_words[:26]).rstrip(",;-") + "." if len(fact_words) > 26 else cooked_facts
+            core_narrative = _trim_to_complete_sentence(cooked_facts, max_words=38)
             core_sub = extract_core_visual_subject(clean_full_headline)
             ai_prompt_val = f"cinematic 9:16 futuristic artificial intelligence laboratory, neural network visualization of {core_sub}, neon blue glow"
 

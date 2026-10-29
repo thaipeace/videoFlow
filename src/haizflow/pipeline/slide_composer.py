@@ -921,7 +921,7 @@ def generate_scenes_narration(
                             "-i", str(audio_dest.resolve()),
                             "-i", str(sting_path.resolve()),
                             "-filter_complex",
-                            "[0:a]adelay=320|320[delayed_voice];[1:a]volume=0.45[cue];"
+                            "[0:a]adelay=450|450[delayed_voice];[1:a]adelay=180|180,volume=0.40[cue];"
                             "[delayed_voice][cue]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[mixed]",
                             "-map", "[mixed]",
                             "-c:a", "pcm_s16le",
