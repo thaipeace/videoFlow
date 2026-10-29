@@ -23,9 +23,9 @@ from haizflow.pipeline.slide_composer import _binary
 
 logger = logging.getLogger(__name__)
 
-CTA_DURATION_SECONDS = 3.8
-CLICK_SUBSCRIBE_TIME = 1.0
-CLICK_BELL_TIME = 1.8
+CTA_DURATION_SECONDS = 3.0
+CLICK_SUBSCRIBE_TIME = 0.8
+CLICK_BELL_TIME = 1.45
 
 
 def synthesize_cta_sfx(
@@ -81,7 +81,7 @@ def synthesize_cta_sfx(
         audio[bell_sample : bell_sample + bell_len] += chime
 
     peak = np.max(np.abs(audio))
-    scaled = (audio / peak) * 31000.0 if peak > 0 else audio
+    scaled = (audio / peak) * 15000.0 if peak > 0 else audio
     audio_i16 = scaled.astype(np.int16)
 
     output_path = Path(output_path).resolve()
@@ -357,8 +357,8 @@ def render_cta_frame(
     elif (CLICK_BELL_TIME - 0.05) <= t < (CLICK_BELL_TIME + 0.15):
         cur_x, cur_y = bell_center
         cur_clicked = CLICK_BELL_TIME <= t < (CLICK_BELL_TIME + 0.15)
-    elif (CLICK_BELL_TIME + 0.15) <= t < 2.9:
-        p = smoothstep(CLICK_BELL_TIME + 0.15, 2.9, t)
+    elif (CLICK_BELL_TIME + 0.15) <= t < min(2.35, total_dur - 0.55):
+        p = smoothstep(CLICK_BELL_TIME + 0.15, min(2.35, total_dur - 0.55), t)
         cur_x = int(bell_center[0] + 60 * p)
         cur_y = int(bell_center[1] + 90 * p)
     else:
@@ -434,8 +434,8 @@ def get_or_build_subscribe_cta(
     cache_dir = Path(RUNTIME_DATA_DIR) / "cta_cache"
     cache_dir.mkdir(parents=True, exist_ok=True)
 
-    video_path = cache_dir / f"subscribe_cta_{ar_name}.mov"
-    sfx_path = cache_dir / "subscribe_cta_sfx.wav"
+    video_path = cache_dir / f"subscribe_cta_v2_{ar_name}.mov"
+    sfx_path = cache_dir / "subscribe_cta_sfx_v2.wav"
 
     if not sfx_path.is_file() or sfx_path.stat().st_size < 1000:
         synthesize_cta_sfx(sfx_path)
@@ -460,9 +460,9 @@ def mix_cta_sfx_into_audio(
 
     delay_ms = max(0, int(delay_sec * 1000))
     filter_expr = (
-        f"[1:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,adelay={delay_ms}|{delay_ms},volume=2.2[sfx];"
+        f"[1:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,adelay={delay_ms}|{delay_ms},volume=0.45[sfx];"
         f"[0:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[vox];"
-        f"[vox][sfx]amix=inputs=2:duration=longest:dropout_transition=0:normalize=0[mixed]"
+        f"[vox][sfx]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[mixed]"
     )
 
     cmd = [

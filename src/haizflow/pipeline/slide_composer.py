@@ -134,7 +134,10 @@ def build_ken_burns_filter(
     fps: int = 30,
 ) -> str:
     """Generate FFmpeg zoompan filter expression for fluid 30fps Ken Burns motion."""
-    total_frames = max(1, int(duration_seconds * fps))
+    total_frames = max(1, int(math.ceil(duration_seconds * fps)))
+    # Add a safety cushion to d= so zoompan never exhausts input frame 0 before -t finishes
+    # (preventing -loop 1 from pulling input frame 1 and snapping zoom back to 1.0 at the end of the slide).
+    d_frames = total_frames + 15
 
     if effect == "zoom_in":
         zoom_step = 0.18 / total_frames
@@ -142,7 +145,7 @@ def build_ken_burns_filter(
             f"scale=-2:{height*2},crop={width*2}:{height*2},"
             f"zoompan=z='min(zoom+{zoom_step:.6f},1.18)':"
             f"x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':"
-            f"d={total_frames}:s={width}x{height}:fps={fps}"
+            f"d={d_frames}:s={width}x{height}:fps={fps}"
         )
 
     if effect == "zoom_out":
@@ -151,23 +154,23 @@ def build_ken_burns_filter(
             f"scale=-2:{height*2},crop={width*2}:{height*2},"
             f"zoompan=z='if(lte(zoom,1.0),1.18,max(1.0,zoom-{zoom_step:.6f}))':"
             f"x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':"
-            f"d={total_frames}:s={width}x{height}:fps={fps}"
+            f"d={d_frames}:s={width}x{height}:fps={fps}"
         )
 
     if effect == "pan_left_to_right":
-        pan_step = f"((iw-iw/1.12)*({total_frames}-on)/{total_frames})"
+        pan_step = f"((iw-iw/1.12)*max(0,{total_frames}-on)/{total_frames})"
         return (
             f"scale=-2:{height*2},crop={width*2}:{height*2},"
             f"zoompan=z='1.12':x='{pan_step}':y='(ih-ih/zoom)/2':"
-            f"d={total_frames}:s={width}x{height}:fps={fps}"
+            f"d={d_frames}:s={width}x{height}:fps={fps}"
         )
 
     if effect == "pan_right_to_left":
-        pan_step = f"((iw-iw/1.12)*on/{total_frames})"
+        pan_step = f"((iw-iw/1.12)*min({total_frames},on)/{total_frames})"
         return (
             f"scale=-2:{height*2},crop={width*2}:{height*2},"
             f"zoompan=z='1.12':x='{pan_step}':y='(ih-ih/zoom)/2':"
-            f"d={total_frames}:s={width}x{height}:fps={fps}"
+            f"d={d_frames}:s={width}x{height}:fps={fps}"
         )
 
     return f"scale={width}:{height}:force_original_aspect_ratio=decrease,pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
@@ -287,7 +290,7 @@ def _build_overlay_graph(
         src = f"[s{label_no}]"
         label_no += 1
         dst = f"[s{label_no}]"
-        parts.append(f"{src}[{cta_lbl}]overlay=0:0:enable='gte(t,{cta_start_sec:.2f})':format=auto{dst}")
+        parts.append(f"{src}[{cta_lbl}]overlay=0:0:enable='gte(t,{cta_start_sec:.2f})':eof_action=pass:format=auto{dst}")
     if overlay_path:
         chain("overlay=0:0:format=auto", add_loop_input(overlay_path))
 
@@ -620,7 +623,7 @@ def mix_master_audio(
         ]
     else:
         total_duration = get_video_duration(str(narration_audio.resolve()))
-        if target_video_duration and target_video_duration > total_duration:
+        if target_video_duration and target_video_duration > 0:
             total_duration = target_video_duration
 
         vol_str = f"{max(0.0, min(1.0, bgm_volume)):.2f}"
@@ -1060,13 +1063,13 @@ def compose_article_video(
                     )
 
             slide_cta_video = None
-            slide_cta_start = 0.5
-            if i == total_slides and cta_video_file and cta_video_file.is_file():
+            slide_cta_start = 0.25
+            if i == total_slides and cta_video_file and cta_video_file.is_file() and project.scenes:
                 slide_cta_video = cta_video_file
-                if spec.duration_seconds > 4.5:
-                    slide_cta_start = spec.duration_seconds - 4.2
-                else:
-                    slide_cta_start = 0.4
+                last_sc_dur = max(1.0, project.scenes[-1].duration_ms / 1000.0)
+                last_sc_offset_in_slide = max(0.0, spec.duration_seconds - last_sc_dur)
+                cta_in_scene = max(0.2, last_sc_dur - 3.1) if last_sc_dur > 3.3 else 0.2
+                slide_cta_start = last_sc_offset_in_slide + cta_in_scene
 
             render_single_slide(
                 spec=spec,
@@ -1089,15 +1092,15 @@ def compose_article_video(
         # 3. Concatenate and mix audio
         report(70, "Đang xử lý và hòa âm giọng đọc...")
 
-        # Mix CTA SFX into the last scene's narration
+        # Mix CTA SFX into the last scene's narration (synchronized to last_scene's own duration)
         if cta_sfx_file and project.scenes and total_slides >= 1:
             last_scene = project.scenes[-1]
             if last_scene.audio_path and Path(last_scene.audio_path).is_file():
                 try:
                     from haizflow.pipeline.subscribe_cta import mix_cta_sfx_into_audio
 
-                    last_dur = slide_specs[-1].duration_seconds
-                    cta_delay = max(0.4, last_dur - 4.2) if last_dur > 4.5 else 0.4
+                    last_sc_dur = max(1.0, last_scene.duration_ms / 1000.0)
+                    cta_delay = max(0.2, last_sc_dur - 3.1) if last_sc_dur > 3.3 else 0.2
                     sfx_dest = staging_dir / "last_scene_with_cta_sfx.wav"
                     mixed_audio = mix_cta_sfx_into_audio(
                         scene_audio_path=Path(last_scene.audio_path),
@@ -1188,6 +1191,7 @@ def compose_article_video(
             ])
 
         output_args.extend([
+            "-shortest",
             "-movflags", "+faststart",
             str(output_video_path.resolve()),
         ])
