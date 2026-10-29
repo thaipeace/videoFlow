@@ -2,12 +2,13 @@ name: Automated Daily News Broadcast Pipeline
 
 on:
   schedule:
-    # 06:03 VN (UTC+7) = 23:03 UTC (ngày hôm trước) -> Tin Mới (Thế giới + Chiến sự + Thể thao 16:9)
-    - cron: '3 23 * * *'
-    # 12:03 VN (UTC+7) = 05:03 UTC -> Shorts Tin Vui (9:16)
-    - cron: '3 5 * * *'
-    # 17:33 VN (UTC+7) = 10:33 UTC -> Shorts Tin AI Nổi Bật (9:16)
-    - cron: '33 10 * * *'
+    # Đặt sớm hơn 3 tiếng để bù trừ độ trễ hàng đợi GitHub Actions (~3h):
+    # Mục tiêu ~06:00 VN -> kích hoạt lúc 03:03 VN (UTC+7) = 20:03 UTC (ngày hôm trước) -> Tin Mới (16:9)
+    - cron: '3 20 * * *'
+    # Mục tiêu ~12:00 VN -> kích hoạt lúc 09:03 VN (UTC+7) = 02:03 UTC -> Shorts Tin Vui (9:16)
+    - cron: '3 2 * * *'
+    # Mục tiêu ~17:30 VN -> kích hoạt lúc 14:33 VN (UTC+7) = 07:33 UTC -> Shorts Tin AI Nổi Bật (9:16)
+    - cron: '33 7 * * *'
     # Shorts Tin Độc Lạ (viral) đang TẠM TẮT cho đến khi có cách làm chất lượng hơn.
   workflow_dispatch:
     inputs:
@@ -109,9 +110,9 @@ jobs:
           INPUT_CAT="${{ github.event.inputs.category || 'auto' }}"
           # Scheduled runs: pick category from the cron that fired (immune to GitHub start delays)
           case "$EVENT_SCHEDULE" in
-            '3 23 * * *')  INPUT_CAT="tin_moi" ;;
-            '3 5 * * *')   INPUT_CAT="hope" ;;
-            '33 10 * * *') INPUT_CAT="ai" ;;
+            '3 20 * * *'|'3 23 * * *')  INPUT_CAT="tin_moi" ;;
+            '3 2 * * *'|'3 5 * * *')    INPUT_CAT="hope" ;;
+            '33 7 * * *'|'33 10 * * *') INPUT_CAT="ai" ;;
           esac
           echo "Resolved category: $INPUT_CAT"
           YT_FLAG=""

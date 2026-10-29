@@ -108,20 +108,22 @@ VIRAL_ENABLED = False
 
 SCHEDULE_RULES = [
     # (name, utc_hour_range, min_topics, aspect_ratio)
-    # 06:03 VN (UTC+7) = 23:03 UTC (ngày hôm trước) -> Tin Mới (Thế giới + Chiến sự + Thể thao 16:9)
-    ("tin_moi", range(22, 24), 9, "16:9"),
-    # 12:03 VN (UTC+7) = 05:03 UTC -> Shorts Tin Vui (9:16 <= 25s)
-    ("hope", range(3, 8), 1, "9:16"),
-    # 17:33 VN (UTC+7) = 10:33 UTC -> Shorts Tin AI Nổi Bật (9:16 <= 25s)
-    ("ai", range(8, 22), 1, "9:16"),
+    # Mục tiêu ~06:00 VN (cron đặt sớm 3h lúc 03:03 VN = 20:03 UTC) -> Tin Mới (Thế giới + Chiến sự + Thể thao 16:9)
+    ("tin_moi", range(19, 24), 9, "16:9"),
+    # Mục tiêu ~12:00 VN (cron đặt sớm 3h lúc 09:03 VN = 02:03 UTC) -> Shorts Tin Vui (9:16 <= 25s)
+    ("hope", range(1, 7), 1, "9:16"),
+    # Mục tiêu ~17:30 VN (cron đặt sớm 3h lúc 14:33 VN = 07:33 UTC) -> Shorts Tin AI Nổi Bật (9:16 <= 25s)
+    ("ai", range(7, 19), 1, "9:16"),
 ]
 
 
 def resolve_category_from_utc() -> tuple[str, str, int]:
     """Auto-detect category, aspect ratio, and topic count from current UTC time.
 
-    Targets (UTC): tin_moi 23:03 (06:03 VN), hope 05:03 (12:03 VN), ai 10:33 (17:33 VN).
-    The day is partitioned so that GitHub's cron start delays still resolve correctly.
+    Cron targets (pre-shifted 3h earlier for GitHub queue):
+      - tin_moi: 20:03 UTC (03:03 VN, target ~06:00 VN)
+      - hope:    02:03 UTC (09:03 VN, target ~12:00 VN)
+      - ai:      07:33 UTC (14:33 VN, target ~17:30 VN)
     """
     now_utc = datetime.now(timezone.utc)
     hour = now_utc.hour
@@ -130,15 +132,15 @@ def resolve_category_from_utc() -> tuple[str, str, int]:
 
     logger.info("Current UTC time: %02d:%02d (Hour %d)", hour, minute, hour)
 
-    # Tin Mới: 22:00 - 03:00 UTC (target 23:03 UTC = 06:03 VN) -> Thế giới + Chiến sự + Thể thao (9 tin 16:9)
-    if total_minutes >= 22 * 60 or total_minutes < 3 * 60:
+    # Tin Mới: 19:00 - 01:30 UTC (02:00 - 08:30 VN) -> Thế giới + Chiến sự + Thể thao (9 tin 16:9)
+    if total_minutes >= 19 * 60 or total_minutes < 90:
         return "tin_moi", "16:9", 9
 
-    # Short Tin Vui: 03:00 - 08:00 UTC (target 05:03 UTC = 12:03 VN) -> 1 tin vui <= 25s (9:16)
-    if 3 * 60 <= total_minutes < 8 * 60:
+    # Short Tin Vui: 01:30 - 07:00 UTC (08:30 - 14:00 VN) -> 1 tin vui <= 25s (9:16)
+    if 90 <= total_minutes < 7 * 60:
         return "hope", "9:16", 1
 
-    # Short Tin AI Nổi Bật: 08:00 - 22:00 UTC (target 10:33 UTC = 17:33 VN) -> 1 tin AI đột phá <= 25s (9:16)
+    # Short Tin AI Nổi Bật: 07:00 - 19:00 UTC (14:00 - 02:00 VN) -> 1 tin AI đột phá <= 25s (9:16)
     return "ai", "9:16", 1
 
 
