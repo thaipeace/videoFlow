@@ -820,7 +820,18 @@ def _bootstrap_history_from_manifests(max_age_days: Optional[int] = None) -> Lis
 def save_published_news_history(history: List[Dict[str, Any]]) -> None:
     history_file = get_news_history_path()
     try:
-        history_file.write_text(json.dumps({"items": history}, ensure_ascii=False, indent=2), encoding="utf-8")
+        existing_slots: Dict[str, Any] = {}
+        if history_file.is_file():
+            try:
+                raw = json.loads(history_file.read_text(encoding="utf-8"))
+                if isinstance(raw, dict) and isinstance(raw.get("completed_slots"), dict):
+                    existing_slots = raw["completed_slots"]
+            except Exception:
+                pass
+        payload: Dict[str, Any] = {"items": history}
+        if existing_slots:
+            payload["completed_slots"] = existing_slots
+        history_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as exc:
         logger.warning("Failed to write published history file: %s", exc)
 

@@ -15,7 +15,7 @@ import logging
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -24,6 +24,83 @@ logger = logging.getLogger("ci_daily_news")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
+
+VN_TZ = timezone(timedelta(hours=7))
+
+
+def _get_history_file() -> Path:
+    return PROJECT_ROOT / "runtime" / "data" / "daily_news" / "published_news_history.json"
+
+
+def has_category_run_today(category: str) -> tuple[bool, str]:
+    """Check if `category` has already been produced today (Vietnam time UTC+7).
+
+    Protects against GitHub Actions' 3-5 hour schedule queue delays running a second
+    time after the user has already triggered `workflow_dispatch` manually.
+    """
+    history_file = _get_history_file()
+    if not history_file.is_file():
+        return False, ""
+
+    vn_today = datetime.now(VN_TZ).strftime("%Y-%m-%d")
+    slot_key = f"{vn_today}:{category}"
+
+    try:
+        raw_data = json.loads(history_file.read_text(encoding="utf-8"))
+        if isinstance(raw_data, dict):
+            completed_slots = raw_data.get("completed_slots", {})
+            if isinstance(completed_slots, dict) and slot_key in completed_slots:
+                return True, str(completed_slots[slot_key])
+            items = raw_data.get("items", [])
+        elif isinstance(raw_data, list):
+            items = raw_data
+        else:
+            items = []
+
+        # Also check recent items in case completed_slots wasn't populated yet
+        now_utc = datetime.now(timezone.utc)
+        for it in reversed(items):
+            if it.get("category") != category:
+                continue
+            ts = str(it.get("timestamp") or "")
+            if not ts:
+                continue
+            try:
+                dt = datetime.fromisoformat(ts[:19]).replace(tzinfo=timezone.utc)
+                age_hours = (now_utc - dt).total_seconds() / 3600.0
+                if -1.0 <= age_hours <= 10.0:
+                    return True, ts
+            except Exception:
+                pass
+    except Exception as exc:
+        logger.warning("Could not inspect history for daily slot deduplication: %s", exc)
+
+    return False, ""
+
+
+def mark_category_completed_today(category: str) -> None:
+    """Record that `category` completed for today's VN date in published_news_history.json."""
+    history_file = _get_history_file()
+    history_file.parent.mkdir(parents=True, exist_ok=True)
+    vn_now = datetime.now(VN_TZ)
+    vn_today = vn_now.strftime("%Y-%m-%d")
+    slot_key = f"{vn_today}:{category}"
+
+    try:
+        raw_data: dict = {"items": [], "completed_slots": {}}
+        if history_file.is_file():
+            loaded = json.loads(history_file.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                raw_data = loaded
+            elif isinstance(loaded, list):
+                raw_data = {"items": loaded, "completed_slots": {}}
+        if not isinstance(raw_data.get("completed_slots"), dict):
+            raw_data["completed_slots"] = {}
+        raw_data["completed_slots"][slot_key] = vn_now.isoformat()
+        history_file.write_text(json.dumps(raw_data, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.info("Marked daily slot completed: %s -> %s", slot_key, vn_now.isoformat())
+    except Exception as exc:
+        logger.warning("Could not mark daily slot completed: %s", exc)
 
 # Shorts Tin Độc Lạ (viral) is temporarily disabled until a better approach is found.
 # Flip to True to re-enable (also re-add the cron + 'viral' option in daily_news.yml).
@@ -187,6 +264,32 @@ def main() -> int:
         aspect_ratio = args.aspect_ratio or default_ar
         max_topics = args.max_topics or default_topics
 
+    # Prevent duplicate runs when GitHub Actions' cron schedule fires hours late
+    # after the user has already triggered workflow_dispatch manually.
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "").strip()
+    if event_name == "schedule" and not args.quick_test:
+        already_ran, prev_ts = has_category_run_today(category)
+        if already_ran:
+            vn_today = datetime.now(VN_TZ).strftime("%Y-%m-%d")
+            logger.info("==================================================================")
+            logger.info("  ⏭️  SKIPPING DELAYED SCHEDULE RUN (ALREADY COMPLETED TODAY)")
+            logger.info("  Category     : %s", category)
+            logger.info("  VN Date      : %s", vn_today)
+            logger.info("  Previous Run : %s", prev_ts)
+            logger.info("==================================================================")
+            summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
+            if summary_file:
+                try:
+                    Path(summary_file).write_text(
+                        f"## ⏭️ Bỏ qua lịch tự động bị trễ (`{category}`)\n"
+                        f"- Bản tin **`{category}`** của ngày **{vn_today}** đã được xuất bản trước đó (lúc `{prev_ts}`).\n"
+                        f"- Tự động hủy lượt chạy `schedule` bị trễ của GitHub để tránh đăng trùng video.\n",
+                        encoding="utf-8",
+                    )
+                except Exception:
+                    pass
+            return 0
+
     logger.info("==================================================================")
     logger.info("  STARTING AUTOMATED NEWS BROADCAST (CI / CLOUD RUNNER)")
     logger.info("  Category    : %s", category)
@@ -223,6 +326,9 @@ def main() -> int:
     env["PYTHONIOENCODING"] = "utf-8"
 
     res = subprocess.run(cmd, env=env)
+
+    if res.returncode == 0 and not args.quick_test:
+        mark_category_completed_today(category)
 
     # Locate the most recent social_publish_manifest.json.
     # daily_news.py writes to: runtime/data/daily_news/{norm_cat}_{date_str}/social_publish_manifest.json
