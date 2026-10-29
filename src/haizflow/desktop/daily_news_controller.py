@@ -157,8 +157,9 @@ class DailyNewsController(QObject):
         self._schedule_wake_up: bool = True
         self._schedule_active: bool = False
         self._schedules: Dict[str, Dict[str, Any]] = {
-            "tin_moi": {"time": "05:30", "wake_up": True, "active": False},
-            "hope": {"time": "11:30", "wake_up": True, "active": False},
+            "tin_moi": {"time": "06:00", "wake_up": True, "active": False},
+            "hope": {"time": "12:00", "wake_up": True, "active": False},
+            "ai": {"time": "17:30", "wake_up": True, "active": False},
             "viral": {"time": "12:00", "wake_up": True, "active": False},
             "tin_nong": {"time": "17:30", "wake_up": True, "active": False},
             "world": {"time": "05:00", "wake_up": True, "active": False},
@@ -708,13 +709,12 @@ class DailyNewsController(QObject):
     @Property("QVariantList", notify=categorySchedulesChanged)
     def categorySchedules(self) -> List[Dict[str, Any]]:
         meta = {
-            "tin_moi": {"label": "Tin Mới (Sáng 5h30)", "icon": "globe", "tag": "Thế giới + Thể thao", "tagColor": "#0078D4", "default_time": "05:30"},
-            "hope": {"label": "Shorts Tin Vui (Trưa 11h30)", "icon": "favorite", "tag": "Shorts • Hy vọng", "tagColor": "#10B981", "default_time": "11:30"},
-            "viral": {"label": "Shorts Tin Độc Lạ (Trưa 12h00)", "icon": "sparkle", "tag": "Shorts • Lạ & Hài", "tagColor": "#FF5722", "default_time": "12:00"},
-            "tin_nong": {"label": "Tin Nóng (Tối 17h30)", "icon": "shield", "tag": "Chiến sự + Công nghệ", "tagColor": "#E53935", "default_time": "17:30"},
+            "tin_moi": {"label": "Bản Tin Nóng (Sáng 06h00)", "icon": "globe", "tag": "Thế giới + Chiến sự + Thể thao", "tagColor": "#D61E26", "default_time": "06:00"},
+            "hope": {"label": "Shorts Tin Vui (Trưa 12h00)", "icon": "favorite", "tag": "Shorts • Hy vọng", "tagColor": "#10B981", "default_time": "12:00"},
+            "ai": {"label": "Shorts Tin AI (Chiều 17h30)", "icon": "tech", "tag": "Shorts • Đột phá AI", "tagColor": "#9B51E0", "default_time": "17:30"},
         }
         result = []
-        for cat in ("tin_moi", "hope", "viral", "tin_nong"):
+        for cat in ("tin_moi", "hope", "ai"):
             m = meta[cat]
             s = self._schedules.get(cat, {"time": m["default_time"], "wake_up": True, "active": False})
             result.append({
@@ -1731,7 +1731,7 @@ class DailyNewsController(QObject):
         script_path = Path(__file__).resolve().parent.parent.parent.parent / "scripts" / "manage_schedule.py"
         python_exe = sys.executable
 
-        for cat in ("tin_moi", "hope", "viral", "tin_nong"):
+        for cat in ("tin_moi", "hope", "ai"):
             try:
                 res = subprocess.run(
                     [python_exe, str(script_path), "--action", "status", "--category", cat],
@@ -1755,10 +1755,10 @@ class DailyNewsController(QObject):
         python_exe = sys.executable
         for cat, cfg in self._schedules.items():
             if cfg.get("active"):
-                t_str = cfg.get("time", "05:30" if cat == "tin_moi" else ("11:30" if cat == "hope" else ("12:00" if cat == "viral" else "17:30")))
+                t_str = cfg.get("time", "06:00" if cat == "tin_moi" else ("12:00" if cat == "hope" else "17:30"))
                 wake_up = cfg.get("wake_up", True)
-                ar = "9:16" if cat in ("viral", "hope") else "16:9"
-                mt = "1" if cat in ("viral", "hope") else str(self._max_topics)
+                ar = "9:16" if cat in ("viral", "hope", "ai") else "16:9"
+                mt = "1" if cat in ("viral", "hope", "ai") else str(self._max_topics)
                 cmd = [
                     python_exe,
                     str(script_path),
@@ -1791,12 +1791,11 @@ class DailyNewsController(QObject):
         if norm_cat not in self._schedules:
             norm_cat = "tin_moi"
         default_times = {
-            "tin_moi": "05:30",
-            "hope": "11:30",
-            "viral": "12:00",
-            "tin_nong": "17:30",
+            "tin_moi": "06:00",
+            "hope": "12:00",
+            "ai": "17:30",
         }
-        t_str = time_str.strip() or default_times.get(norm_cat, "05:30")
+        t_str = time_str.strip() or default_times.get(norm_cat, "06:00")
 
         self._schedules[norm_cat]["time"] = t_str
         self._schedules[norm_cat]["wake_up"] = wake_up

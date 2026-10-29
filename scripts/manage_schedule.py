@@ -37,34 +37,19 @@ RUNNER_SCRIPT = PROJECT_ROOT / "scripts" / "run_daily_news.py"
 TASK_NAMES = {
     "tin_moi": "HaizFlow_DailyNews_tin_moi",
     "hope": "HaizFlow_DailyNews_hope",
-    "viral": "HaizFlow_DailyNews_viral",
-    "tin_nong": "HaizFlow_DailyNews_tin_nong",
-    "world": "HaizFlow_DailyNews_world",
-    "war": "HaizFlow_DailyNews_war",
-    "tech": "HaizFlow_DailyNews_tech",
-    "sports": "HaizFlow_DailyNews_sports",
+    "ai": "HaizFlow_DailyNews_ai",
 }
 
 LEGACY_TASK_NAMES = {
-    "tin_moi": ["HaizFlow_DailyWorldNews", "HaizFlow_Daily_News", "HaizFlow_DailyNews_world", "HaizFlow_DailyNews_sports"],
+    "tin_moi": ["HaizFlow_DailyWorldNews", "HaizFlow_Daily_News", "HaizFlow_DailyNews_world", "HaizFlow_DailyNews_sports", "HaizFlow_DailyNews_tin_nong"],
     "hope": [],
-    "viral": [],
-    "tin_nong": ["HaizFlow_DailyNews_war", "HaizFlow_DailyNews_tech"],
-    "world": ["HaizFlow_DailyWorldNews", "HaizFlow_Daily_News"],
-    "war": [],
-    "tech": [],
-    "sports": [],
+    "ai": ["HaizFlow_DailyNews_tech"],
 }
 
 DEFAULT_SCHEDULE_TIMES = {
-    "tin_moi": "05:30",
-    "hope": "11:30",
-    "viral": "12:00",
-    "tin_nong": "17:30",
-    "world": "05:00",
-    "war": "05:10",
-    "tech": "05:20",
-    "sports": "05:40",
+    "tin_moi": "06:00",
+    "hope": "12:00",
+    "ai": "17:30",
 }
 
 
@@ -74,16 +59,16 @@ def get_task_name(category: str) -> str:
 
 
 def get_task_command(
-    category: str = "world",
+    category: str = "tin_moi",
     aspect_ratio: str = "16:9",
-    max_topics: int = 8,
+    max_topics: int = 9,
     upload_youtube: Optional[bool] = None,
 ) -> str:
     cat_norm = category.strip().lower()
-    # Enforce aspect ratio: Only viral and hope are 9:16 Shorts, all other categories are 16:9 widescreen
-    is_short = cat_norm in ("viral", "hope", "tinla", "docla", "tinvui", "hyvong")
+    # Enforce aspect ratio: Only hope and ai are 9:16 Shorts (1 topic), tin_moi is 16:9 widescreen (9 topics)
+    is_short = cat_norm in ("hope", "ai", "tinvui", "hyvong", "ai_tech", "tin_ai")
     ar = "9:16" if is_short else "16:9"
-    effective_topics = 1 if is_short and max_topics in (3, 7, 8) else max_topics
+    effective_topics = 1 if is_short else (9 if max_topics in (3, 7, 8) else max_topics)
 
     if PYTHONW_EXE.is_file():
         py_path = str(PYTHONW_EXE.resolve())
@@ -154,19 +139,14 @@ def create_task(
 ) -> bool:
     """Create or update the daily scheduled task in Windows for a specific category."""
     cat_norm = category.strip().lower()
-    ar = "9:16" if cat_norm in ("viral", "hope", "tinla", "docla", "tinvui", "hyvong") else "16:9"
+    ar = "9:16" if cat_norm in ("hope", "ai", "tinvui", "hyvong", "ai_tech", "tin_ai") else "16:9"
     task_name = get_task_name(category)
     task_run_cmd = get_task_command(category, ar, max_topics, upload_youtube=upload_youtube)
 
     cat_labels = {
-        "tin_moi": "Tin Mới (Thế giới + Thể thao 16:9)",
+        "tin_moi": "Bản Tin Nóng (Thế giới + Chiến sự + Thể thao 16:9)",
         "hope": "Shorts Tin Vui (Y khoa & Hy vọng 9:16)",
-        "viral": "Shorts Tin Độc Lạ (Kỳ thú & Hài hước 9:16)",
-        "tin_nong": "Tin Nóng (Chiến sự + Công nghệ 16:9)",
-        "world": "Thời sự thế giới (Quốc tế)",
-        "war": "Chiến sự thế giới (Điểm nóng)",
-        "tech": "Bản tin công nghệ (AI & Tech)",
-        "sports": "Bản tin thể thao (Bóng đá)",
+        "ai": "Shorts Tin AI (Đột phá Trí tuệ nhân tạo 9:16)",
     }
     label = cat_labels.get(category, category)
 
@@ -323,6 +303,8 @@ def clean_legacy_tasks() -> int:
         "HaizFlow_DailyNews_war",
         "HaizFlow_DailyNews_tech",
         "HaizFlow_DailyNews_sports",
+        "HaizFlow_DailyNews_viral",
+        "HaizFlow_DailyNews_tin_nong",
     ]
     deleted = 0
     print("\n[DỌN DẸP LỊCH CŨ] Đang kiểm tra và gỡ bỏ các tác vụ lập lịch cũ...")
@@ -351,9 +333,9 @@ def main() -> int:
     )
     parser.add_argument(
         "--category",
-        choices=["tin_moi", "hope", "viral", "tin_nong", "world", "war", "tech", "sports"],
+        choices=["tin_moi", "hope", "ai"],
         default="tin_moi",
-        help="Danh mục bản tin cần lên lịch (tin_moi, hope, viral, tin_nong, ...)",
+        help="Danh mục bản tin cần lên lịch (tin_moi, hope, ai)",
     )
     parser.add_argument("--time", default=None, help="Giờ chạy hàng ngày (định dạng HH:MM, mặc định theo chuyên mục)")
     parser.add_argument("--aspect-ratio", default=None, choices=["16:9", "9:16", "1:1"], help="Khung hình video")
@@ -417,9 +399,9 @@ def main() -> int:
     elif action in {"trigger", "run"}:
         return 0 if run_now(args.category) else 1
     elif action == "create":
-        sched_time = args.time or DEFAULT_SCHEDULE_TIMES.get(args.category, "05:30")
-        ar = args.aspect_ratio or ("9:16" if args.category in ("viral", "hope") else "16:9")
-        default_topics = 3 if args.category in ("viral", "hope") else 8
+        sched_time = args.time or DEFAULT_SCHEDULE_TIMES.get(args.category, "06:00")
+        ar = args.aspect_ratio or ("9:16" if args.category in ("hope", "ai") else "16:9")
+        default_topics = 1 if args.category in ("hope", "ai") else 9
         topics_val = default_topics if args.max_topics in (7, 8) else args.max_topics
         ok = create_task(
             category=args.category,

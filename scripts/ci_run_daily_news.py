@@ -174,28 +174,13 @@ def rollback_last_batch_for_category(category: str) -> int:
         logger.warning("Failed to rollback last batch for category '%s': %s", category, exc)
         return 0
 
-# Shorts Tin Độc Lạ (viral) is temporarily disabled until a better approach is found.
-# Flip to True to re-enable (also re-add the cron + 'viral' option in daily_news.yml).
-VIRAL_ENABLED = False
-
-SCHEDULE_RULES = [
-    # (name, utc_hour_range, min_topics, aspect_ratio)
-    # Mục tiêu ~06:00 VN (cron đặt sớm 3h lúc 03:03 VN = 20:03 UTC) -> Tin Mới (Thế giới + Chiến sự + Thể thao 16:9)
-    ("tin_moi", range(19, 24), 9, "16:9"),
-    # Mục tiêu ~12:00 VN (cron đặt sớm 3h lúc 09:03 VN = 02:03 UTC) -> Shorts Tin Vui (9:16 <= 25s)
-    ("hope", range(1, 7), 1, "9:16"),
-    # Mục tiêu ~17:30 VN (cron đặt sớm 3h lúc 14:33 VN = 07:33 UTC) -> Shorts Tin AI Nổi Bật (9:16 <= 25s)
-    ("ai", range(7, 19), 1, "9:16"),
-]
-
-
 def resolve_category_from_utc() -> tuple[str, str, int]:
     """Auto-detect category, aspect ratio, and topic count from current UTC time.
 
-    Cron targets (pre-shifted 3h earlier for GitHub queue):
-      - tin_moi: 20:03 UTC (03:03 VN, target ~06:00 VN)
-      - hope:    02:03 UTC (09:03 VN, target ~12:00 VN)
-      - ai:      07:33 UTC (14:33 VN, target ~17:30 VN)
+    Fixed daily schedule (1 Broadcast 16:9 + 2 Shorts 9:16, pre-shifted 3h earlier for GitHub queue):
+      - tin_moi: 20:03 UTC (03:03 VN, target ~06:00 VN) -> 16:9 (9 topics)
+      - hope:    02:03 UTC (09:03 VN, target ~12:00 VN) -> 9:16 (1 topic)
+      - ai:      07:33 UTC (14:33 VN, target ~17:30 VN) -> 9:16 (1 topic)
     """
     now_utc = datetime.now(timezone.utc)
     hour = now_utc.hour
@@ -204,15 +189,15 @@ def resolve_category_from_utc() -> tuple[str, str, int]:
 
     logger.info("Current UTC time: %02d:%02d (Hour %d)", hour, minute, hour)
 
-    # Tin Mới: 19:00 - 01:30 UTC (02:00 - 08:30 VN) -> Thế giới + Chiến sự + Thể thao (9 tin 16:9)
+    # 1. Bản tin Tin Nóng (tin_moi): 19:00 - 01:30 UTC (02:00 - 08:30 VN) -> 9 tin 16:9
     if total_minutes >= 19 * 60 or total_minutes < 90:
         return "tin_moi", "16:9", 9
 
-    # Short Tin Vui: 01:30 - 07:00 UTC (08:30 - 14:00 VN) -> 1 tin vui <= 25s (9:16)
+    # 2. Short Tin Vui (hope): 01:30 - 07:00 UTC (08:30 - 14:00 VN) -> 1 tin vui <= 25s (9:16)
     if 90 <= total_minutes < 7 * 60:
         return "hope", "9:16", 1
 
-    # Short Tin AI Nổi Bật: 07:00 - 19:00 UTC (14:00 - 02:00 VN) -> 1 tin AI đột phá <= 25s (9:16)
+    # 3. Short Tin AI (ai): 07:00 - 19:00 UTC (14:00 - 02:00 VN) -> 1 tin AI đột phá <= 25s (9:16)
     return "ai", "9:16", 1
 
 
@@ -249,7 +234,7 @@ def setup_ci_environment() -> None:
     if not settings_file.is_file():
         default_settings = {
             "selected_category": "tin_moi",
-            "max_topics": 8,
+            "max_topics": 9,
             "aspect_ratio": "16:9",
             "voice_id": "vi-VN-NamMinhNeural",
             "detail_level": "standard",
@@ -260,9 +245,8 @@ def setup_ci_environment() -> None:
             "auto_add_to_playlist": True,
             "youtube_playlist_tin_moi": "Bản tin thế giới",
             "youtube_playlist_hope": "Bản tin thế giới",
-            "youtube_playlist_viral": "Bản tin thế giới",
-            "youtube_playlist_tin_nong": "Bản tin thế giới",
-            "schedule_time": "05:30",
+            "youtube_playlist_ai": "Bản tin thế giới",
+            "schedule_time": "06:00",
             "schedule_wake_up": True,
         }
         settings_file.write_text(json.dumps(default_settings, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -283,9 +267,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="HaizFlow CI / Cloud Runner for Daily News")
     parser.add_argument(
         "--category",
-        choices=["auto", "tin_moi", "hope", "ai", "tin_nong", "viral"],
+        choices=["auto", "tin_moi", "hope", "ai"],
         default="auto",
-        help="Category to produce. 'auto' calculates the category based on current UTC time.",
+        help="Category to produce: 'tin_moi' (16:9 Broadcast), 'hope' (Shorts Tin Vui), 'ai' (Shorts Tin AI), or 'auto'.",
     )
     parser.add_argument("--aspect-ratio", choices=["16:9", "9:16"], default=None)
     parser.add_argument("--max-topics", type=int, default=None)
@@ -307,41 +291,20 @@ def main() -> int:
 
     setup_ci_environment()
 
-    # Determine category, aspect ratio, and topic count
+    # Determine category, aspect ratio, and topic count (strictly 1 Broadcast + 2 Shorts)
     if args.category == "auto":
-        category, default_ar, default_topics = resolve_category_from_utc()
+        category, aspect_ratio, max_topics = resolve_category_from_utc()
     else:
         category = args.category
-        if category in ("hope", "viral", "ai"):
-            default_ar, default_topics = "9:16", 1
-        elif category == "tin_moi":
-            default_ar, default_topics = "16:9", 9
+        if category in ("hope", "ai"):
+            aspect_ratio, max_topics = "9:16", 1
         else:
-            default_ar, default_topics = "16:9", 8
+            aspect_ratio, max_topics = "16:9", 9
 
-    if category == "viral" and not VIRAL_ENABLED:
-        logger.warning("Category 'viral' (Shorts Tin Độc Lạ) is temporarily DISABLED. Skipping run.")
-        summary_file = os.environ.get("GITHUB_STEP_SUMMARY")
-        if summary_file:
-            try:
-                Path(summary_file).write_text(
-                    "## ⏸️ Shorts Tin Độc Lạ (viral) đang tạm tắt\n"
-                    "Bỏ qua lần chạy này cho đến khi có cách làm chất lượng hơn.\n",
-                    encoding="utf-8",
-                )
-            except Exception:
-                pass
-        return 0
-
-    if category in ("hope", "viral", "ai"):
-        aspect_ratio = "9:16"
-        max_topics = 1
-    elif category == "tin_moi":
-        aspect_ratio = "16:9"
-        max_topics = 9
-    else:
-        aspect_ratio = args.aspect_ratio or default_ar
-        max_topics = args.max_topics or default_topics
+    if args.aspect_ratio:
+        aspect_ratio = args.aspect_ratio
+    if args.max_topics:
+        max_topics = args.max_topics
 
     if args.redo_last:
         rollback_last_batch_for_category(category)

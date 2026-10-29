@@ -402,53 +402,47 @@ class TestDailyNewsController(unittest.TestCase):
 
     def test_category_schedules(self):
         """Verify per-category schedule management, time setting, wake-up, and status."""
-        # 1. Verify categorySchedules list structure
+        # 1. Verify categorySchedules list structure (1 Broadcast + 2 Shorts)
         schedules = self.controller.categorySchedules
-        self.assertEqual(len(schedules), 4)
+        self.assertEqual(len(schedules), 3)
         cats = [s["category"] for s in schedules]
-        self.assertEqual(cats, ["tin_moi", "hope", "viral", "tin_nong"])
+        self.assertEqual(cats, ["tin_moi", "hope", "ai"])
 
         # 2. Set individual category times and wake up
         with patch.object(self.controller, "configureCategorySchedule", return_value=True):
-            self.controller.setCategoryScheduleTime("tin_moi", "05:30")
-            self.controller.setCategoryScheduleTime("hope", "11:30")
-            self.controller.setCategoryScheduleTime("viral", "12:00")
-            self.controller.setCategoryScheduleTime("tin_nong", "17:30")
-            self.controller.setCategoryScheduleWakeUp("tin_nong", False)
+            self.controller.setCategoryScheduleTime("tin_moi", "06:00")
+            self.controller.setCategoryScheduleTime("hope", "12:00")
+            self.controller.setCategoryScheduleTime("ai", "17:30")
+            self.controller.setCategoryScheduleWakeUp("ai", False)
 
         sched_map = {s["category"]: s for s in self.controller.categorySchedules}
-        self.assertEqual(sched_map["tin_moi"]["time"], "05:30")
-        self.assertEqual(sched_map["hope"]["time"], "11:30")
-        self.assertEqual(sched_map["viral"]["time"], "12:00")
-        self.assertEqual(sched_map["tin_nong"]["time"], "17:30")
-        self.assertFalse(sched_map["tin_nong"]["wake_up"])
+        self.assertEqual(sched_map["tin_moi"]["time"], "06:00")
+        self.assertEqual(sched_map["hope"]["time"], "12:00")
+        self.assertEqual(sched_map["ai"]["time"], "17:30")
+        self.assertFalse(sched_map["ai"]["wake_up"])
         self.assertTrue(sched_map["tin_moi"]["wake_up"])
 
         # 3. Switching active category updates scheduleTime and scheduleWakeUp
-        self.controller.setSelectedCategory("tin_nong")
+        self.controller.setSelectedCategory("ai")
         self.assertEqual(self.controller.scheduleTime, "17:30")
         self.assertFalse(self.controller.scheduleWakeUp)
 
         self.controller.setSelectedCategory("tin_moi")
-        self.assertEqual(self.controller.scheduleTime, "05:30")
-        self.assertTrue(self.controller.scheduleWakeUp)
-
-        self.controller.setSelectedCategory("viral")
-        self.assertEqual(self.controller.scheduleTime, "12:00")
+        self.assertEqual(self.controller.scheduleTime, "06:00")
         self.assertTrue(self.controller.scheduleWakeUp)
 
         self.controller.setSelectedCategory("hope")
-        self.assertEqual(self.controller.scheduleTime, "11:30")
+        self.assertEqual(self.controller.scheduleTime, "12:00")
         self.assertTrue(self.controller.scheduleWakeUp)
 
         # 4. Mock configureCategorySchedule and removeCategorySchedule
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0)
-            ok = self.controller.configureCategorySchedule("viral", "06:15", True)
+            ok = self.controller.configureCategorySchedule("hope", "12:15", True)
             self.assertTrue(ok)
-            self.assertEqual(self.controller._schedules["viral"]["time"], "06:15")
+            self.assertEqual(self.controller._schedules["hope"]["time"], "12:15")
 
-            ok_del = self.controller.removeCategorySchedule("viral")
+            ok_del = self.controller.removeCategorySchedule("hope")
             self.assertTrue(ok_del)
 
     def test_playlist_management(self):

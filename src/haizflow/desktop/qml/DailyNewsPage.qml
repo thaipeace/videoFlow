@@ -163,7 +163,7 @@ Item {
         }
 
         // =====================================================================
-        // CATEGORY TABS: TIN MỚI (5H30) / TIN VUI (11H30) / TIN ĐỘC LẠ (12H00) / TIN NÓNG (17H30)
+        // CATEGORY TABS: 1 BẢN TIN (TIN NÓNG 06H00) + 2 SHORTS (TIN VUI 12H00 & TIN AI 17H30)
         // =====================================================================
         Rectangle {
             Layout.fillWidth: true
@@ -180,10 +180,9 @@ Item {
 
                 Repeater {
                     model: [
-                        { key: "tin_moi", label: qsTr("Tin Mới (5h30)"), icon: "globe", tag: qsTr("Thế giới + Thể thao"), tagColor: Theme.interactive },
-                        { key: "hope", label: qsTr("Short Tin Vui (11h30)"), icon: "favorite", tag: qsTr("Shorts • Hy vọng"), tagColor: "#10B981" },
-                        { key: "viral", label: qsTr("Short Tin Độc Lạ (12h00)"), icon: "sparkle", tag: qsTr("Shorts • Lạ & Hài"), tagColor: "#FF5722" },
-                        { key: "tin_nong", label: qsTr("Tin Nóng (17h30)"), icon: "shield", tag: qsTr("Chiến sự + Công nghệ"), tagColor: "#E53935" }
+                        { key: "tin_moi", label: qsTr("Tin Nóng (06h00)"), icon: "globe", tag: qsTr("Thế giới + Chiến sự + Thể thao"), tagColor: "#D61E26" },
+                        { key: "hope", label: qsTr("Short Tin Vui (12h00)"), icon: "favorite", tag: qsTr("Shorts • Hy vọng"), tagColor: "#10B981" },
+                        { key: "ai", label: qsTr("Short Tin AI (17h30)"), icon: "tech", tag: qsTr("Shorts • Đột phá AI"), tagColor: "#9B51E0" }
                     ]
 
                     delegate: Control {
