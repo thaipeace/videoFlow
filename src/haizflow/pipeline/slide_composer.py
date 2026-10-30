@@ -114,6 +114,7 @@ class SlideSpec:
     duration_seconds: float
     effect: str
     scene_indices: List[int] = field(default_factory=list)
+    chapter_label: str = ""
 
 
 def resolution_for_aspect_ratio(aspect_ratio: AspectRatio) -> Tuple[int, int]:
@@ -189,6 +190,7 @@ def calculate_slide_specs(
     current_image = ""
     current_duration_ms = 0
     current_scene_indices: List[int] = []
+    current_chapter_label = ""
     effect_idx = 0
 
     fallback_image = default_image_path
@@ -199,6 +201,7 @@ def calculate_slide_specs(
 
     for idx, scene in enumerate(scenes):
         scene_dur = scene.duration_ms if scene.duration_ms > 0 else 4000
+        scene_chap = str(getattr(scene, "chapter_label", "") or "")
 
         if scene.has_image and scene.image_path and (scene.image_path != current_image or not current_image):
             if current_image and current_duration_ms > 0:
@@ -210,15 +213,20 @@ def calculate_slide_specs(
                         duration_seconds=duration_sec,
                         effect=effect,
                         scene_indices=list(current_scene_indices),
+                        chapter_label=current_chapter_label,
                     )
                 )
                 effect_idx += 1
             current_image = scene.image_path
             current_duration_ms = scene_dur
             current_scene_indices = [idx]
+            current_chapter_label = scene_chap
         else:
             if not current_image:
                 current_image = fallback_image or scene.image_path or default_image_path
+                current_chapter_label = scene_chap
+            elif not current_chapter_label and scene_chap:
+                current_chapter_label = scene_chap
             current_duration_ms += scene_dur
             current_scene_indices.append(idx)
 
@@ -231,6 +239,7 @@ def calculate_slide_specs(
                 duration_seconds=duration_sec,
                 effect=effect,
                 scene_indices=list(current_scene_indices),
+                chapter_label=current_chapter_label,
             )
         )
 
@@ -1054,12 +1063,16 @@ def compose_article_video(
             slide_overlay = None
             if branding_pool:
                 if hasattr(branding_pool, "next_overlay"):
-                    slide_overlay = branding_pool.next_overlay()
+                    try:
+                        slide_overlay = branding_pool.next_overlay(chapter_label=spec.chapter_label)
+                    except TypeError:
+                        slide_overlay = branding_pool.next_overlay()
                 elif hasattr(branding_pool, "get_overlay"):
                     slide_overlay = branding_pool.get_overlay(
                         slide_index=i - 1,
                         total_slides=total_slides,
                         time_offset=timeline_offset,
+                        chapter_label=spec.chapter_label,
                     )
 
             slide_cta_video = None

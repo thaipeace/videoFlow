@@ -98,6 +98,10 @@ class ArticleScene(BaseModel):
         default=False,
         description="Whether to play a transition sound effect/cue at the start of this scene"
     )
+    chapter_label: str = Field(
+        default="",
+        description="Optional chapter / topic section badge for this scene (e.g. 'THỜI SỰ THẾ GIỚI')"
+    )
 
 
 class ArticleProjectConfig(BaseModel):

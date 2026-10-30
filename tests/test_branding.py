@@ -48,6 +48,16 @@ class BrandingOverlayTests(unittest.TestCase):
             self.assertTrue(all(a != b for a, b in zip(names, names[1:])))
             self.assertTrue(set(names) <= {f"branding_{s}.png" for s in WATERMARK_SLOTS})
 
+    def test_chapter_label_renders_pill_next_to_logo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            pool = BrandingOverlayPool(1920, 1080, Path(tmp), seed="x")
+            path = pool.next_overlay(chapter_label="THỜI SỰ THẾ GIỚI")
+            self.assertTrue(path.name.startswith("branding_"))
+            img = Image.open(path)
+            box = img.getchannel("A").crop((0, 0, 500, 200)).getbbox()
+            self.assertIsNotNone(box)
+            self.assertGreater(box[2] - box[0], 90)  # wider than logo alone due to chapter pill
+
 
 class BrandingConfigTests(unittest.TestCase):
     def test_branding_is_opt_in(self):

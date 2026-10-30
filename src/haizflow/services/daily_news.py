@@ -922,6 +922,7 @@ class WorldNewsItem:
     full_text: str = ""
     image_url: str = ""
     social_platform: str = "x"  # 'x', 'facebook', 'instagram', or 'web'
+    topic_block: str = ""  # 'world', 'war', 'sports' (used for 3-chapter Tin Nóng broadcast)
 
 
 @dataclass
@@ -935,11 +936,200 @@ class DailyNewsScene:
     image_path: str = ""
     image_source_type: Literal["wikimedia_commons", "ai_generated", "custom", "social_screenshot", "direct_photo"] = "wikimedia_commons"
     duration_ms: int = 0
+    start_time_ms: int = 0
     has_transition_cue: bool = False
     image_url: str = ""
     social_platform: str = "x"
     source: str = ""  # Human-readable source name (e.g. 'Bored Panda', 'BBC News') for the source frame badge
     source_url: str = ""  # Original article/post URL for attribution and deep linking
+    source_event_index: int = 0
+    topic_block: str = ""  # 'intro', 'world', 'war', 'sports', 'outro'
+    chapter_label: str = ""  # Visual badge label, e.g. 'THỜI SỰ THẾ GIỚI'
+
+
+TIN_MOI_CHAPTER_META: Dict[str, Dict[str, str]] = {
+    "intro": {
+        "title": "Điểm tin mở đầu",
+        "badge": "ĐIỂM TIN NÓNG",
+        "prompt_tag": "MỞ ĐẦU",
+    },
+    "world": {
+        "title": "Thời sự & Kinh tế Thế giới",
+        "badge": "THỜI SỰ THẾ GIỚI",
+        "prompt_tag": "CHƯƠNG 1: THỜI SỰ & KINH TẾ THẾ GIỚI",
+    },
+    "war": {
+        "title": "Điểm nóng Chiến sự & An ninh",
+        "badge": "ĐIỂM NÓNG CHIẾN SỰ",
+        "prompt_tag": "CHƯƠNG 2: ĐIỂM NÓNG CHIẾN SỰ & AN NINH",
+    },
+    "sports": {
+        "title": "Thể thao & Sân cỏ Quốc tế",
+        "badge": "THỂ THAO QUỐC TẾ",
+        "prompt_tag": "CHƯƠNG 3: THỂ THAO & SÂN CỎ QUỐC TẾ",
+    },
+    "outro": {
+        "title": "Tổng kết bản tin",
+        "badge": "",
+        "prompt_tag": "KẾT THÚC",
+    },
+}
+
+
+def infer_scene_topic_block(
+    scene_text: str,
+    scene_entity: str,
+    matched_item: Optional[WorldNewsItem],
+    scene_idx: int,
+    total_scenes: int,
+    category: str = "tin_moi",
+) -> str:
+    """Determine which chapter block ('intro', 'world', 'war', 'sports', 'outro') a scene belongs to."""
+    norm_cat = normalize_category(category)
+    if norm_cat != "tin_moi":
+        return ""
+    if scene_idx == 0:
+        return "intro"
+    if total_scenes >= 3 and scene_idx == total_scenes - 1:
+        txt_lower = (scene_text or "").lower()
+        if any(k in txt_lower for k in ("khép lại", "đăng ký kênh", "hẹn gặp lại", "cảm ơn quý vị")):
+            return "outro"
+    if matched_item and getattr(matched_item, "topic_block", "") in ("world", "war", "sports"):
+        return matched_item.topic_block
+
+    combined = f"{scene_text or ''} {scene_entity or ''}".lower()
+    sports_kw = (
+        "bóng đá", "sân cỏ", "bàn thắng", "tỷ số", "hlv", "cầu thủ", "champions league", "cúp c1",
+        "ngoại hạng anh", "premier league", "la liga", "serie a", "bundesliga", "real madrid",
+        "barcelona", "arsenal", "manchester", "man city", "liverpool", "chelsea", "bayern", "psg",
+        "mbappe", "mbappé", "haaland", "bellingham", "vinicius", "yamal", "salah", "messi", "ronaldo",
+        "football", "stadium", "match", "striker", "goal",
+    )
+    if any(k in combined for k in sports_kw):
+        return "sports"
+
+    war_kw = (
+        "chiến sự", "chiến trường", "quân sự", "tên lửa", "không kích", "tập kích", "phòng không",
+        "giao tranh", "tiền tuyến", "pháo kích", "uav", "drone", "thiết giáp", "ukraine", "kharkiv",
+        "donetsk", "gaza", "hezbollah", "houthi", "biển đỏ", "xung đột vũ trang", "war", "military",
+        "missile", "airstrike", "frontline", "artillery",
+    )
+    if any(k in combined for k in war_kw):
+        return "war"
+
+    # Fallback by relative position across the 3 blocks (world -> war -> sports)
+    content_total = max(1, total_scenes - 2)
+    rel_pos = max(0, scene_idx - 1) / content_total
+    if rel_pos < 0.34:
+        return "world"
+    if rel_pos < 0.67:
+        return "war"
+    return "sports"
+
+
+def get_chapter_badge_for_block(topic_block: str, category: str = "tin_moi") -> str:
+    """Return the uppercase visual badge label for a chapter block in Tin Nóng."""
+    if normalize_category(category) != "tin_moi":
+        return ""
+    meta = TIN_MOI_CHAPTER_META.get(topic_block or "")
+    return meta["badge"] if meta else ""
+
+
+def format_chapter_timestamp(seconds: float) -> str:
+    """Format seconds as MM:SS (or HH:MM:SS if >= 1 hour) for YouTube video chapters."""
+    total_sec = max(0, int(round(seconds)))
+    hours, rem = divmod(total_sec, 3600)
+    mins, secs = divmod(rem, 60)
+    if hours > 0:
+        return f"{hours:02d}:{mins:02d}:{secs:02d}"
+    return f"{mins:02d}:{secs:02d}"
+
+
+def build_video_chapters(
+    scenes: List[Any],
+    category: str = "tin_moi",
+) -> List[Dict[str, Any]]:
+    """Build YouTube-compliant chapter markers (00:00 start, >= 3 chapters, >= 10s each) for Tin Nóng."""
+    norm_cat = normalize_category(category)
+    if norm_cat != "tin_moi" or not scenes:
+        return []
+
+    total_scenes = len(scenes)
+    # Compute cumulative start times in seconds from scene duration_ms / start_time_ms
+    scene_starts_sec: List[float] = []
+    running_ms = 0
+    for sc in scenes:
+        st_ms = int(getattr(sc, "start_time_ms", 0) or 0)
+        dur_ms = int(getattr(sc, "duration_ms", 0) or 0)
+        if dur_ms <= 0:
+            # Estimate from word count (~3.2 words/sec + 0.5s buffer) if audio wasn't measured yet
+            w_cnt = len(str(getattr(sc, "text", "") or "").split())
+            dur_ms = max(4000, int(round((w_cnt / 3.0 + 0.6) * 1000)))
+        effective_start_ms = st_ms if (st_ms > 0 or running_ms == 0) else running_ms
+        scene_starts_sec.append(effective_start_ms / 1000.0)
+        running_ms = effective_start_ms + dur_ms
+
+    # Find the first scene index for each of the 3 thematic chapters: world, war, sports
+    first_block_scene: Dict[str, int] = {}
+    for idx, sc in enumerate(scenes):
+        block = str(getattr(sc, "topic_block", "") or "").strip()
+        if not block:
+            block = infer_scene_topic_block(
+                scene_text=str(getattr(sc, "text", "") or ""),
+                scene_entity=str(getattr(sc, "entity_query", "") or ""),
+                matched_item=None,
+                scene_idx=idx,
+                total_scenes=total_scenes,
+                category=norm_cat,
+            )
+        if block in ("world", "war", "sports") and block not in first_block_scene:
+            first_block_scene[block] = idx
+
+    raw_chapters: List[Dict[str, Any]] = [
+        {
+            "block": "intro",
+            "title": TIN_MOI_CHAPTER_META["intro"]["title"],
+            "start_seconds": 0.0,
+            "scene_index": 0,
+        }
+    ]
+    for block_key in ("world", "war", "sports"):
+        if block_key in first_block_scene:
+            s_idx = first_block_scene[block_key]
+            raw_chapters.append(
+                {
+                    "block": block_key,
+                    "title": TIN_MOI_CHAPTER_META[block_key]["title"],
+                    "start_seconds": scene_starts_sec[s_idx],
+                    "scene_index": s_idx,
+                }
+            )
+
+    # Sort by start_seconds and enforce YouTube's minimum 10-second gap between chapters
+    raw_chapters.sort(key=lambda c: (c["start_seconds"], c["scene_index"]))
+
+    # If 'world' starts at scene 1 and scene 0 is shorter than 10s, nudge 'world' to 10s
+    # so both '00:00 Điểm tin mở đầu' and '00:10 Thời sự & Kinh tế Thế giới' are valid YouTube chapters.
+    chapters: List[Dict[str, Any]] = []
+    for ch in raw_chapters:
+        start_sec = float(ch["start_seconds"])
+        if not chapters:
+            start_sec = 0.0
+        else:
+            prev_sec = float(chapters[-1]["start_seconds"])
+            if start_sec - prev_sec < 10.0:
+                start_sec = prev_sec + 10.0
+        chapters.append(
+            {
+                "block": ch["block"],
+                "title": ch["title"],
+                "start_seconds": round(start_sec, 2),
+                "timestamp": format_chapter_timestamp(start_sec),
+                "scene_index": ch["scene_index"],
+            }
+        )
+
+    return chapters
 
 
 @dataclass
@@ -1908,6 +2098,7 @@ def cluster_and_rank_news_topics(
             full_text=merged_full_text,
             image_url=primary_image,
             social_platform=primary_platform,
+            topic_block=getattr(primary, "topic_block", ""),
         )
         # Prominence score based on multi-outlet coverage & title substantive length
         setattr(u_item, "_prominence_score", len(cluster_items) * 3.0 + len(primary.title) * 0.02)
@@ -2008,6 +2199,12 @@ def fetch_world_news_rss(
             category="sports",
             export_dt=export_dt,
         )
+        for it in w_items:
+            it.topic_block = "world"
+        for it in war_items:
+            it.topic_block = "war"
+        for it in s_items:
+            it.topic_block = "sports"
         return w_items + war_items + s_items
 
     # Strategy: Merged evening broadcast 'Tin Nóng' (War + Tech)
@@ -2582,10 +2779,17 @@ def synthesize_news_script_with_gemini(
     cfg = get_category_config(category)
     now_dt = datetime.now()
     date_str = now_dt.strftime("%d/%m/%Y")
-    items_text = "\n\n".join(
-        f"SỰ KIỆN {idx + 1}: [{item.source}] {item.title}\nChi tiết sự việc từ bài báo: {item.full_text if item.full_text else item.summary}"
-        for idx, item in enumerate(news_items[:15])
-    )
+    def _format_prompt_item(idx: int, item: WorldNewsItem) -> str:
+        block_key = getattr(item, "topic_block", "")
+        chap_tag = ""
+        if category in ("tin_moi", "morning") and block_key in TIN_MOI_CHAPTER_META:
+            chap_tag = f"[{TIN_MOI_CHAPTER_META[block_key]['prompt_tag']}] "
+        return (
+            f"SỰ KIỆN {idx + 1}: {chap_tag}[{item.source}] {item.title}\n"
+            f"Chi tiết sự việc từ bài báo: {item.full_text if item.full_text else item.summary}"
+        )
+
+    items_text = "\n\n".join(_format_prompt_item(idx, item) for idx, item in enumerate(news_items[:15]))
 
     if category in ("viral", "hope", "ai"):
         if max_topics == 1:
@@ -2628,13 +2832,13 @@ def synthesize_news_script_with_gemini(
     category_specific_rules = ""
     if category in ("tin_moi", "morning"):
         category_specific_rules = """
-ĐẶC THÙ BẮT BUỘC CHO BẢN TIN MỚI (CHIẾN LƯỢC KẾT HỢP TOÀN DIỆN 3 KHỐI: THỜI SỰ THẾ GIỚI - CHIẾN SỰ ĐỊA CHÍNH TRỊ - BÓNG ĐÁ QUỐC TẾ):
-- Bản tin buổi sáng dài dặn, chi tiết, chiều sâu cao, kết hợp hài hòa 3 trụ cột thông tin quốc tế lớn nhất rạng sáng nay:
-  + KHỐI 1 (THỜI SỰ & KINH TẾ QUỐC TẾ): Các diễn biến thời sự nóng bỏng, quan hệ ngoại giao các nước lớn, kinh tế toàn cầu tại Âu - Mỹ, Trung Đông và khu vực Châu Á láng giềng.
-  + KHỐI 2 (ĐIỂM NÓNG CHIẾN SỰ & AN NINH QUỐC PHÒNG): Thực địa các điểm nóng chiến trường (Nga - Ukraine, Trung Đông Gaza/Lebanon/Yemen, bán đảo Triều Tiên, biển Đỏ...), đòn tập kích, động thái quân sự và vũ khí chiến lược.
-  + KHỐI 3 (ĐIỂM SÁNG SÂN CỎ & BÓNG ĐÁ ĐỈNH CAO): Điểm nhấn các giải đấu hàng đầu thế giới (Ngoại Hạng Anh, Cúp C1, La Liga, Serie A...), kết quả tỉ số, siêu phẩm bàn thắng, bảng xếp hạng và câu chuyện ngôi sao (Mbappe, Haaland, Bellingham, Vinicius, Messi, Ronaldo...).
-- BỐ CỤC & CHUYỂN MẠCH: Duy trì phong cách thời sự đĩnh đạc, hiện đại, phát thanh viên truyền hình chuyên nghiệp. Giữa các khối có câu nối chuyển tiếp tự nhiên (ví dụ: "Tiếp nối bản tin là những diễn biến nóng bỏng tại các điểm nóng chiến sự quốc tế...", "Khép lại bản tin là những khoảnh khắc bùng nổ trên sân cỏ quốc tế rạng sáng nay...").
-- Mỗi sự kiện triển khai 2 phân cảnh chi tiết (45-65 từ/cảnh).
+ĐẶC THÙ BẮT BUỘC CHO BẢN TIN NÓNG (CHIA THÀNH 3 CHAPTER RÕ RÀNG THEO CHỦ ĐỀ):
+- Bản tin phải được chia làm 3 CHAPTER (CHƯƠNG) tuần tự theo đúng thứ tự các nhóm sự kiện đã đánh dấu:
+  + CHƯƠNG 1 - THỜI SỰ & KINH TẾ THẾ GIỚI: Tường thuật các sự kiện thuộc [CHƯƠNG 1: THỜI SỰ & KINH TẾ THẾ GIỚI]. Câu đầu tiên của phân cảnh đầu tiên thuộc Chương 1 mở đầu rõ ràng (ví dụ: "Mở đầu phần Thời sự và Kinh tế thế giới rạng sáng nay...").
+  + CHƯƠNG 2 - ĐIỂM NÓNG CHIẾN SỰ & AN NINH: Tường thuật các sự kiện thuộc [CHƯƠNG 2: ĐIỂM NÓNG CHIẾN SỰ & AN NINH]. Câu đầu tiên khi bước sang Chương 2 PHẢI có câu chuyển chương rõ nét (ví dụ: "Chuyển sang phần Điểm nóng Chiến sự và An ninh quốc tế...").
+  + CHƯƠNG 3 - THỂ THAO & SÂN CỎ QUỐC TẾ: Tường thuật các sự kiện thuộc [CHƯƠNG 3: THỂ THAO & SÂN CỎ QUỐC TẾ]. Câu đầu tiên khi bước sang Chương 3 PHẢI có câu chuyển chương rõ nét (ví dụ: "Khép lại bản tin hôm nay là phần Thể thao và Sân cỏ quốc tế...").
+- TUYỆT ĐỐI GIỮ ĐÚNG THỨ TỰ 3 CHƯƠNG (không trộn lẫn tin bóng đá lên đầu hay xen kẽ lộn xộn giữa các chương) để hệ thống tự động chia mốc thời gian YouTube Chapters chuẩn xác.
+- Mỗi sự kiện triển khai 2 phân cảnh chi tiết (45-65 từ/cảnh) và điền chuẩn xác "source_event_index".
 - TUYỆT ĐỐI CẤM đưa tin về Việt Nam (không đưa tin chính trị, xã hội, hay bóng đá Việt Nam). Toàn bộ bản tin 100% là quốc tế.
 """
     elif category == "ai":
@@ -2939,15 +3143,30 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
             item_img = cand if not is_placeholder_image_url(cand) else ""
             item_plat = news_items[0].social_platform
 
+        scene_text_str = str(s.get("text", "")).strip()
+        scene_entity_str = str(s.get("entity_query", "")).strip()
+        scene_block = infer_scene_topic_block(
+            scene_text=scene_text_str,
+            scene_entity=scene_entity_str,
+            matched_item=matched_item,
+            scene_idx=idx,
+            total_scenes=total_raw,
+            category=category,
+        )
+        scene_badge = get_chapter_badge_for_block(scene_block, category=category)
+
         scenes.append(
             DailyNewsScene(
                 scene_index=idx,
-                text=str(s.get("text", "")).strip(),
-                entity_query=str(s.get("entity_query", "")).strip(),
+                text=scene_text_str,
+                entity_query=scene_entity_str,
                 ai_prompt=str(s.get("ai_prompt", "")).strip(),
                 has_transition_cue=is_cue,
                 image_url=item_img,
                 social_platform=item_plat,
+                source_event_index=src_idx_int or 0,
+                topic_block=scene_block,
+                chapter_label=scene_badge,
             )
         )
 
@@ -3871,7 +4090,7 @@ def fallback_offline_news_script(
             )
         )
 
-    # Standard World / Tech / Sports format
+    # Standard World / Tech / Sports / Tin Nóng (tin_moi) format
     # Intro scene
     scenes.append(
         DailyNewsScene(
@@ -3886,9 +4105,19 @@ def fallback_offline_news_script(
             has_transition_cue=False,
             image_url="",
             social_platform="x",
+            source_event_index=1 if selected else 0,
+            topic_block="intro" if norm_cat == "tin_moi" else "",
+            chapter_label=get_chapter_badge_for_block("intro", norm_cat),
         )
     )
     sc_idx += 1
+
+    seen_chapter_blocks: set[str] = set()
+    chapter_opening_leads = {
+        "world": "Mở đầu phần Thời sự và Kinh tế thế giới hôm nay",
+        "war": "Chuyển sang phần Điểm nóng Chiến sự và An ninh quốc tế",
+        "sports": "Khép lại bản tin với phần Thể thao và Sân cỏ quốc tế",
+    }
 
     for idx, item in enumerate(selected, start=1):
         clean_full_headline = re.sub(r"\s*[-|–]\s*[A-Za-z0-9\s\.]+$", "", item.title).strip()
@@ -3900,9 +4129,24 @@ def fallback_offline_news_script(
         vi_titles.append(vi_title)
         entity_query = extract_search_keywords_from_headline(item.title, category=category)
 
-        # Scene 1: Event announcement with natural journalistic lead-in (has_transition_cue=True plays the sound cue!)
-        cat_lead_ins = get_lead_ins_for_category(category)
-        lead_in = cat_lead_ins[(idx - 1) % len(cat_lead_ins)]
+        item_block = infer_scene_topic_block(
+            scene_text=vi_title,
+            scene_entity=entity_query,
+            matched_item=item,
+            scene_idx=idx,
+            total_scenes=len(selected) + 2,
+            category=norm_cat,
+        )
+        item_badge = get_chapter_badge_for_block(item_block, norm_cat)
+
+        # Scene 1: Event announcement with chapter-opening lead-in when entering a new chapter in tin_moi
+        if norm_cat == "tin_moi" and item_block in chapter_opening_leads and item_block not in seen_chapter_blocks:
+            seen_chapter_blocks.add(item_block)
+            lead_in = chapter_opening_leads[item_block]
+        else:
+            cat_lead_ins = get_lead_ins_for_category(item_block if norm_cat == "tin_moi" and item_block else category)
+            lead_in = cat_lead_ins[(idx - 1) % len(cat_lead_ins)]
+
         scenes.append(
             DailyNewsScene(
                 scene_index=sc_idx,
@@ -3912,6 +4156,9 @@ def fallback_offline_news_script(
                 has_transition_cue=True,
                 image_url=item.image_url,
                 social_platform=item.social_platform,
+                source_event_index=idx,
+                topic_block=item_block,
+                chapter_label=item_badge,
             )
         )
         sc_idx += 1
@@ -3928,6 +4175,9 @@ def fallback_offline_news_script(
                 has_transition_cue=False,
                 image_url=item.image_url,
                 social_platform=item.social_platform,
+                source_event_index=idx,
+                topic_block=item_block,
+                chapter_label=item_badge,
             )
         )
         sc_idx += 1
@@ -3942,6 +4192,9 @@ def fallback_offline_news_script(
             has_transition_cue=True,
             image_url="",
             social_platform="x",
+            source_event_index=0,
+            topic_block="outro" if norm_cat == "tin_moi" else "",
+            chapter_label="",
         )
     )
 
@@ -4340,7 +4593,16 @@ def get_mock_news_items(category: str = "world") -> List[WorldNewsItem]:
     """Provide realistic, high-quality international news items for offline tests / fallbacks."""
     cat = normalize_category(category)
     if cat == "tin_moi":
-        return get_mock_news_items("world")[:4] + get_mock_news_items("sports")[:4]
+        w_mock = get_mock_news_items("world")[:3]
+        war_mock = get_mock_news_items("war")[:3]
+        s_mock = get_mock_news_items("sports")[:2]
+        for it in w_mock:
+            it.topic_block = "world"
+        for it in war_mock:
+            it.topic_block = "war"
+        for it in s_mock:
+            it.topic_block = "sports"
+        return w_mock + war_mock + s_mock
     if cat == "tin_nong":
         return get_mock_news_items("war")[:4] + get_mock_news_items("tech")[:4]
     if cat == "tech":
@@ -5135,7 +5397,21 @@ def format_youtube_description_with_sources(
                     "• All rights belong to their respective owners. Content used under Fair Use for entertainment & commentary."
                 )
 
-        components = [c for c in [header, sources_text, clean_hashtags] if c]
+        # Extract optional YouTube chapters (for Tin Nóng 3-chapter broadcast)
+        raw_chapters = manifest.get("chapters") or []
+        chapters_text = ""
+        if raw_chapters and not is_shorts:
+            ch_lines = []
+            for ch in raw_chapters:
+                if isinstance(ch, dict):
+                    ts = str(ch.get("timestamp") or "00:00").strip()
+                    ch_title = str(ch.get("title") or "").strip()
+                    if ts and ch_title:
+                        ch_lines.append(f"{ts} {ch_title}")
+            if len(ch_lines) >= 3:
+                chapters_text = "⏱️ PHÂN ĐOẠN BẢN TIN (CHAPTERS):\n" + "\n".join(ch_lines)
+
+        components = [c for c in [header, chapters_text, sources_text, clean_hashtags] if c]
         return "\n\n".join(components)
 
     # 1. Header: Title and Summary Lead
@@ -5307,6 +5583,7 @@ def produce_daily_news_video(
                 image_path=sc.image_path,
                 image_prompt=sc.ai_prompt or sc.entity_query,
                 has_transition_cue=sc.has_transition_cue,
+                chapter_label=sc.chapter_label,
             )
         )
 
@@ -5347,6 +5624,13 @@ def produce_daily_news_video(
         output_video_path=final_video_path,
         progress_callback=progress_callback,
     )
+
+    # Sync exact measured audio start_time_ms and duration_ms from project.scenes back to digest.scenes
+    for d_sc, p_sc in zip(digest.scenes, project.scenes):
+        d_sc.start_time_ms = int(getattr(p_sc, "start_time_ms", 0) or 0)
+        d_sc.duration_ms = int(getattr(p_sc, "duration_ms", 0) or 0)
+
+    video_chapters = build_video_chapters(digest.scenes, category=norm_cat)
 
     # Step 5b: Curiosity thumbnail (hook <= 8 words + bulletin label). Never blocks publishing.
     thumbnail_file = output_dir / "thumbnail.jpg"
@@ -5402,6 +5686,7 @@ def produce_daily_news_video(
         "youtube_published_at": "",
         "youtube_description": "",
         "custom_note": "",
+        "chapters": video_chapters,
         "script_scenes": [
             {
                 "scene_index": s.scene_index,
@@ -5409,6 +5694,10 @@ def produce_daily_news_video(
                 "entity": s.entity_query,
                 "image_source": s.image_source_type,
                 "transition_cue": s.has_transition_cue,
+                "topic_block": s.topic_block,
+                "chapter_label": s.chapter_label,
+                "start_time_ms": s.start_time_ms,
+                "duration_ms": s.duration_ms,
             }
             for s in digest.scenes
         ],

@@ -68,8 +68,9 @@ def build_branding_overlay(
     height: int,
     output_path: Path,
     watermark_slot: str = "right",
+    chapter_label: str = "",
 ) -> Path:
-    """Render a transparent full-frame PNG with the small VCH logo (top-left) and faint watermark."""
+    """Render a transparent full-frame PNG with the small VCH logo (top-left), optional chapter pill, and faint watermark."""
     base = min(width, height)
     overlay = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
@@ -93,6 +94,26 @@ def build_branding_overlay(
         font=logo_font,
         fill=(255, 255, 255, 255),
     )
+
+    # Optional broadcast chapter pill next to the VCH badge (e.g. THỜI SỰ THẾ GIỚI / ĐIỂM NÓNG CHIẾN SỰ / THỂ THAO QUỐC TẾ)
+    clean_chapter = (chapter_label or "").strip().upper()
+    if clean_chapter:
+        chap_font = _bold_font(max(10, round(badge_h * 0.56)))
+        cw, ch = _text_size(draw, clean_chapter, chap_font)
+        cpad_x = round(badge_h * 0.50)
+        chap_x = margin + badge_w + max(4, round(badge_h * 0.25))
+        chap_w = cw + cpad_x * 2
+        draw.rounded_rectangle(
+            (chap_x, margin, chap_x + chap_w, margin + badge_h),
+            radius=max(2, round(badge_h * 0.2)),
+            fill=(18, 24, 38, 210),
+        )
+        draw.text(
+            (chap_x + (chap_w - cw) / 2, margin + (badge_h - ch) / 2 - round(badge_h * 0.06)),
+            clean_chapter,
+            font=chap_font,
+            fill=(255, 255, 255, 245),
+        )
 
     # Faint watermark: low alpha white with an even fainter shadow for legibility on bright photos.
     wm_font = _bold_font(max(12, round(base * 0.022)))
@@ -120,23 +141,33 @@ class BrandingOverlayPool:
         self._rng = random.Random(seed)
         self._last_slot: Optional[str] = None
 
-    def _path_for(self, slot: str) -> Path:
-        if slot not in self._paths:
-            self._paths[slot] = build_branding_overlay(
+    def _path_for(self, slot: str, chapter_label: str = "") -> Path:
+        import hashlib
+
+        clean_chapter = (chapter_label or "").strip().upper()
+        cache_key = f"{slot}:{clean_chapter}" if clean_chapter else slot
+        if cache_key not in self._paths:
+            if clean_chapter:
+                ch_hash = hashlib.md5(clean_chapter.encode("utf-8")).hexdigest()[:6]
+                filename = f"branding_{slot}_{ch_hash}.png"
+            else:
+                filename = f"branding_{slot}.png"
+            self._paths[cache_key] = build_branding_overlay(
                 self._width,
                 self._height,
-                self._cache_dir / f"branding_{slot}.png",
+                self._cache_dir / filename,
                 watermark_slot=slot,
+                chapter_label=clean_chapter,
             )
-        return self._paths[slot]
+        return self._paths[cache_key]
 
-    def next_overlay(self) -> Path:
+    def next_overlay(self, chapter_label: str = "") -> Path:
         """Pick a watermark slot at random (never the same slot twice in a row)."""
         choices: List[str] = [s for s in WATERMARK_SLOTS if s != self._last_slot]
         slot = self._rng.choice(choices)
         self._last_slot = slot
-        return self._path_for(slot)
+        return self._path_for(slot, chapter_label=chapter_label)
 
     def get_overlay(self, *args, **kwargs) -> Path:
         """Compatibility wrapper: retrieve next branding overlay for a slide."""
-        return self.next_overlay()
+        return self.next_overlay(chapter_label=str(kwargs.get("chapter_label") or ""))
