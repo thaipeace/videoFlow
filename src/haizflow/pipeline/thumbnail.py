@@ -14,15 +14,17 @@ Includes:
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont
 
 from haizflow.pipeline.branding import LOGO_COLOR, LOGO_TEXT, _bold_font
 
 logger = logging.getLogger(__name__)
+
+VN_TZ = timezone(timedelta(hours=7))
 
 MAX_THUMBNAIL_BYTES = 1_900_000
 HOOK_FILL = (255, 221, 0)
@@ -148,11 +150,11 @@ CATEGORY_LABEL_PALETTE: Dict[str, Dict[str, Any]] = {
 
 
 def get_weekday_hook_color(target_date: Optional[datetime] = None) -> Tuple[int, int, int]:
-    """Return the RGB text accent color for the specified date (default: today).
+    """Return the RGB text accent color for the specified date (default: today in Vietnam time UTC+7).
 
     Used for the primary hook line on standard 16:9 landscape videos.
     """
-    dt = target_date or datetime.now()
+    dt = target_date or datetime.now(VN_TZ)
     weekday_idx = dt.weekday()
     theme = WEEKDAY_THEMES.get(weekday_idx, WEEKDAY_THEMES[0])
     return theme["rgb"]
@@ -277,6 +279,7 @@ def _render_portrait_shorts_thumbnail(
     label: str,
     output_path: Path,
     category: Optional[str] = None,
+    include_logo: bool = True,
 ) -> Path:
     """Render a striking, viral YouTube Shorts (9:16) thumbnail.
 
@@ -339,18 +342,19 @@ def _render_portrait_shorts_thumbnail(
     draw = ImageDraw.Draw(canvas)
 
     # 3. Channel Branding Badge (Top-Left)
-    badge_font = _bold_font(round(base * 0.040))
-    bl, bt, br, bb = draw.textbbox((0, 0), LOGO_TEXT, font=badge_font)
-    pad_bx = round(base * 0.024)
-    pad_by = round(base * 0.012)
-    badge_x = round(base * 0.055)
-    badge_y = round(base * 0.045)
-    draw.rounded_rectangle(
-        (badge_x, badge_y, badge_x + (br - bl) + pad_bx * 2, badge_y + (bb - bt) + pad_by * 2),
-        radius=round(base * 0.014),
-        fill=(220, 20, 40, 240),
-    )
-    draw.text((badge_x + pad_bx - bl, badge_y + pad_by - bt), LOGO_TEXT, font=badge_font, fill=(255, 255, 255, 255))
+    if include_logo:
+        badge_font = _bold_font(round(base * 0.040))
+        bl, bt, br, bb = draw.textbbox((0, 0), LOGO_TEXT, font=badge_font)
+        pad_bx = round(base * 0.024)
+        pad_by = round(base * 0.012)
+        badge_x = round(base * 0.055)
+        badge_y = round(base * 0.045)
+        draw.rounded_rectangle(
+            (badge_x, badge_y, badge_x + (br - bl) + pad_bx * 2, badge_y + (bb - bt) + pad_by * 2),
+            radius=round(base * 0.014),
+            fill=(220, 20, 40, 240),
+        )
+        draw.text((badge_x + pad_bx - bl, badge_y + pad_by - bt), LOGO_TEXT, font=badge_font, fill=(255, 255, 255, 255))
 
     # 4. Text Zone: Upper-Middle Safe Area (y: 18% to 44%)
     # Centered horizontally, far above YouTube Shorts title/avatar/sound bar!
@@ -491,6 +495,7 @@ def _render_landscape_thumbnail(
     output_path: Path,
     category: Optional[str] = None,
     target_date: Optional[datetime] = None,
+    include_logo: bool = True,
 ) -> Path:
     """Render a crisp, high-impact landscape (16:9) YouTube thumbnail with 7-day theming."""
     size = (1280, 720)
@@ -531,15 +536,16 @@ def _render_landscape_thumbnail(
     margin = round(base * 0.055)
 
     # Small VCH badge, top-left.
-    badge_font = _bold_font(round(base * 0.045))
-    bl, bt, br, bb = draw.textbbox((0, 0), LOGO_TEXT, font=badge_font)
-    pad = round(base * 0.016)
-    draw.rounded_rectangle(
-        (margin, margin, margin + (br - bl) + pad * 2, margin + (bb - bt) + pad * 2),
-        radius=round(base * 0.012),
-        fill=LOGO_COLOR + (255,),
-    )
-    draw.text((margin + pad - bl, margin + pad - bt), LOGO_TEXT, font=badge_font, fill=(255, 255, 255, 255))
+    if include_logo:
+        badge_font = _bold_font(round(base * 0.045))
+        bl, bt, br, bb = draw.textbbox((0, 0), LOGO_TEXT, font=badge_font)
+        pad = round(base * 0.016)
+        draw.rounded_rectangle(
+            (margin, margin, margin + (br - bl) + pad * 2, margin + (bb - bt) + pad * 2),
+            radius=round(base * 0.012),
+            fill=LOGO_COLOR + (255,),
+        )
+        draw.text((margin + pad - bl, margin + pad - bt), LOGO_TEXT, font=badge_font, fill=(255, 255, 255, 255))
 
     # Text zone: left ~62% for landscape
     text_w = round(width * 0.62) - margin
@@ -630,6 +636,7 @@ def build_thumbnail(
     aspect_ratio: str = "16:9",
     category: Optional[str] = None,
     target_date: Optional[datetime] = None,
+    include_logo: bool = True,
 ) -> Path:
     """Render a thumbnail JPEG and return its path.
 
@@ -644,6 +651,7 @@ def build_thumbnail(
             label=label,
             output_path=output_path,
             category=category,
+            include_logo=include_logo,
         )
     return _render_landscape_thumbnail(
         source_image=source_image,
@@ -652,6 +660,7 @@ def build_thumbnail(
         output_path=output_path,
         category=category,
         target_date=target_date,
+        include_logo=include_logo,
     )
 
 

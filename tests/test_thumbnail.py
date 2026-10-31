@@ -93,6 +93,21 @@ class ThumbnailTests(unittest.TestCase):
         self.assertEqual(get_category_label_color("TIN NÓNG & ĐỘC LẠ", "viral"), (102, 51, 153))
         self.assertEqual(get_category_label_color("TIN VUI", "hope"), (184, 92, 0))
 
+    def test_include_logo_false_omits_top_left_vch_badge(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with_logo = build_thumbnail(
+                None, "SỐC: ĐÁY MỚI?", "TIN NÓNG", Path(tmp) / "with_logo.jpg", "16:9", include_logo=True
+            )
+            no_logo = build_thumbnail(
+                None, "SỐC: ĐÁY MỚI?", "TIN NÓNG", Path(tmp) / "no_logo.jpg", "16:9", include_logo=False
+            )
+            with Image.open(with_logo) as img_with, Image.open(no_logo) as img_no:
+                # Top-left badge area (around x=55, y=55) is red in with_logo and dark background in no_logo
+                px_with = img_with.getpixel((55, 55))
+                px_no = img_no.getpixel((55, 55))
+                self.assertGreater(px_with[0], 150)  # Red VCH badge
+                self.assertLess(px_no[0], 50)  # Dark background without badge
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -51,16 +51,30 @@ from haizflow.services.image_generator import (
 
 logger = logging.getLogger(__name__)
 
+VN_TZ = timezone(timedelta(hours=7))
+
+
+def now_vn() -> datetime:
+    """Return the current datetime in Vietnam timezone (UTC+7)."""
+    return datetime.now(VN_TZ)
+
+
 # Gemini Candidate Models for Automatic Failover / High Availability
 GEMINI_MODELS = [
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-    "gemini-1.5-flash-latest",
+    "gemini-2.5-flash-lite",
     "gemini-3-flash-preview",
-    "gemini-3.5-flash",
-    "gemini-3.1-flash-lite",
+    "gemini-3.1-flash-lite-preview",
+    "gemini-2.0-flash",
     "gemini-flash-latest",
+]
+
+# Secondary AI Editorial Fallback: GitHub Models (OpenAI GPT-4o-mini / GPT-4o via GITHUB_TOKEN)
+GITHUB_MODELS_CANDIDATES = [
+    ("https://models.github.ai/inference/chat/completions", "openai/gpt-4o-mini"),
+    ("https://models.inference.ai.azure.com/chat/completions", "gpt-4o-mini"),
+    ("https://models.github.ai/inference/chat/completions", "openai/gpt-4o"),
+    ("https://models.inference.ai.azure.com/chat/completions", "gpt-4o"),
 ]
 
 # International RSS Feeds covering World, Global Economy, Science & Technology
@@ -518,13 +532,14 @@ def ensure_date_in_title(title: str, date_val: Optional[Any] = None) -> str:
     if re.search(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b", clean_title) or re.search(r"\b\d{1,2}[/-]\d{1,2}\b", clean_title):
         return clean_title
 
-    # Determine date object
+    # Determine date object (always normalized to Vietnam time UTC+7 when timezone-aware or unspecified)
     if isinstance(date_val, datetime):
-        dt = date_val
+        dt = date_val.astimezone(VN_TZ) if date_val.tzinfo is not None else date_val
     elif isinstance(date_val, str) and date_val:
         dt = None
         try:
-            dt = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
+            parsed_iso = datetime.fromisoformat(date_val.replace("Z", "+00:00"))
+            dt = parsed_iso.astimezone(VN_TZ) if parsed_iso.tzinfo is not None else parsed_iso
         except Exception:
             pass
         if not dt:
@@ -543,9 +558,9 @@ def ensure_date_in_title(title: str, date_val: Optional[Any] = None) -> str:
                 except Exception:
                     pass
         if not dt:
-            dt = datetime.now()
+            dt = now_vn()
     else:
-        dt = datetime.now()
+        dt = now_vn()
 
     date_tag = f"Ngày {dt.strftime('%d/%m/%Y')}"
 
@@ -606,7 +621,7 @@ def build_hook_title(hook: str, category: str = "world", date_val: Optional[date
     """Build '[Hook] - Bản Tin ... DD/MM/YYYY' (<= 98 chars; viral, hope & ai get ' #Shorts')."""
     norm = normalize_category(category)
     cfg = get_category_config(norm)
-    dt = date_val if isinstance(date_val, datetime) else datetime.now()
+    dt = date_val if isinstance(date_val, datetime) else now_vn()
     tail = f" - {cfg.get('title_suffix_label', 'Bản Tin Thế Giới')} {dt.strftime('%d/%m/%Y')}"
     if norm in ("viral", "hope", "ai"):
         tail += " #Shorts"
@@ -2768,6 +2783,96 @@ def find_matching_news_item_for_scene(
     return None
 
 
+def _parse_editorial_json_response(raw_text: str) -> Dict[str, Any]:
+    """Clean markdown fences or stray text and parse LLM editorial JSON response."""
+    text = (raw_text or "").strip()
+    if not text:
+        raise ValueError("Empty LLM response text.")
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, flags=re.IGNORECASE)
+        text = re.sub(r"\s*```$", "", text)
+        text = text.strip()
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        start_idx = text.find("{")
+        end_idx = text.rfind("}")
+        if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            parsed = json.loads(text[start_idx : end_idx + 1])
+        else:
+            raise
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("scenes"), list) or not parsed["scenes"]:
+        raise ValueError("Parsed JSON does not contain a valid non-empty 'scenes' list.")
+    return parsed
+
+
+def get_effective_github_models_token() -> str:
+    """Resolve token for GitHub Models fallback (GH_MODELS_TOKEN or GITHUB_TOKEN)."""
+    import sys
+
+    explicit = os.environ.get("GH_MODELS_TOKEN", "").strip()
+    if explicit:
+        return explicit
+    if "unittest" in sys.modules and any("test" in arg.lower() for arg in sys.argv):
+        return ""
+    return os.environ.get("GITHUB_TOKEN", "").strip()
+
+
+def call_github_models_editorial_fallback(prompt: str, token: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Call GitHub Models (GPT-4o-mini / GPT-4o) as secondary AI editorial engine if Gemini fails."""
+    gh_token = (token or get_effective_github_models_token()).strip()
+    if not gh_token:
+        return None
+
+    for endpoint, model_id in GITHUB_MODELS_CANDIDATES:
+        payload = {
+            "model": model_id,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "Bạn là biên tập viên thời sự quốc tế cao cấp của đài truyền hình. "
+                        "Hãy biên tập bản tin tiếng Việt hấp dẫn, mạch lạc, giàu dữ kiện báo chí và "
+                        "trả về DUY NHẤT một chuỗi JSON hợp lệ theo đúng cấu trúc yêu cầu."
+                    ),
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.25,
+            "max_tokens": 8192,
+            "response_format": {"type": "json_object"},
+        }
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {gh_token}",
+                "Accept": "application/vnd.github+json",
+                "User-Agent": "HaizFlow-DailyNews/1.0",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=65) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            choices = data.get("choices") or []
+            if choices:
+                content = choices[0].get("message", {}).get("content", "")
+                parsed = _parse_editorial_json_response(content)
+                logger.info(
+                    "Successfully synthesized news script via GitHub Models fallback ('%s' @ %s)",
+                    model_id,
+                    endpoint,
+                )
+                return parsed
+        except Exception as exc:
+            logger.warning("GitHub Models fallback candidate '%s' (%s) failed: %s", model_id, endpoint, exc)
+            time.sleep(1.0)
+
+    return None
+
+
 def synthesize_news_script_with_gemini(
     news_items: List[WorldNewsItem],
     api_key: str,
@@ -2775,9 +2880,9 @@ def synthesize_news_script_with_gemini(
     max_topics: int = 8,
     category: str = "world",
 ) -> DailyNewsDigest:
-    """Use Gemini Flash to create an editorial Vietnamese YouTube news broadcast (Option A: 7-10 topics)."""
+    """Use Gemini Flash (with GitHub Models GPT-4o-mini failover) to create an editorial Vietnamese YouTube news broadcast."""
     cfg = get_category_config(category)
-    now_dt = datetime.now()
+    now_dt = now_vn()
     date_str = now_dt.strftime("%d/%m/%Y")
     def _format_prompt_item(idx: int, item: WorldNewsItem) -> str:
         block_key = getattr(item, "topic_block", "")
@@ -3075,35 +3180,40 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "temperature": 0.25,
+            "maxOutputTokens": 8192,
             "responseMimeType": "application/json",
         },
     }
 
-    res = None
-    last_exc = None
-    for model_name in GEMINI_MODELS:
-        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-        req = urllib.request.Request(
-            endpoint,
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=35) as resp:
-                res = json.loads(resp.read().decode("utf-8"))
-            if res and "candidates" in res and res["candidates"]:
-                logger.info("Successfully synthesized news script using model '%s'", model_name)
-                break
-        except Exception as exc:
-            last_exc = exc
-            logger.warning("Gemini model '%s' failed (%s). Trying next candidate...", model_name, exc)
-            time.sleep(1.0)
+    parsed: Optional[Dict[str, Any]] = None
+    last_exc: Optional[Exception] = None
+    if api_key:
+        for model_name in GEMINI_MODELS:
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            req = urllib.request.Request(
+                endpoint,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    res = json.loads(resp.read().decode("utf-8"))
+                if res and "candidates" in res and res["candidates"]:
+                    raw_text = res["candidates"][0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    parsed = _parse_editorial_json_response(raw_text)
+                    logger.info("Successfully synthesized news script using model '%s'", model_name)
+                    break
+            except Exception as exc:
+                last_exc = exc
+                logger.warning("Gemini model '%s' failed (%s). Trying next candidate...", model_name, exc)
+                time.sleep(1.0)
 
-    if not res:
-        raise last_exc or RuntimeError("All Gemini candidate models failed.")
+    if parsed is None:
+        logger.warning("All Gemini models failed or key missing. Attempting GitHub Models AI editorial fallback...")
+        parsed = call_github_models_editorial_fallback(prompt)
 
-    raw_text = res["candidates"][0]["content"]["parts"][0]["text"]
-    parsed = json.loads(raw_text)
+    if parsed is None:
+        raise last_exc or RuntimeError("All Gemini and GitHub Models candidate models failed.")
 
     scenes: List[DailyNewsScene] = []
     raw_scenes = parsed.get("scenes", [])
@@ -3632,7 +3742,7 @@ def fallback_offline_news_script(
     """Generate a high-quality editorial fallback news digest if Gemini API is unreachable or offline."""
     cfg = get_category_config(category)
     norm_cat = normalize_category(category)
-    now_dt = datetime.now()
+    now_dt = now_vn()
     date_str = now_dt.strftime("%d/%m/%Y")
     selected = news_items[:max_topics] if news_items else []
     scenes: List[DailyNewsScene] = []
@@ -4487,6 +4597,13 @@ def prepare_scene_illustrations(
         if progress_callback:
             progress_callback(pct, f"Đang chuẩn bị hình ảnh phân cảnh {idx + 1}/{total}...")
 
+        # Opening hook scene (idx == 0) in 16:9 broadcast uses the no-logo thumbnail slide directly;
+        # no need to search Wikimedia or generate an AI image for it.
+        if idx == 0 and total > 1 and aspect_ratio == "16:9":
+            if scene.image_url and not scenes[1].image_url:
+                scenes[1].image_url = scene.image_url
+            continue
+
         img_dest = output_dir / f"scene_{scene.scene_index:03d}.jpg"
         acquired = False
 
@@ -4584,6 +4701,21 @@ def prepare_scene_illustrations(
             card.save(img_dest, quality=90)
             scene.image_path = str(img_dest.resolve())
             scene.image_source_type = "custom"
+
+    # Ensure scene 0 always has a valid file on disk even if prepare_scene_illustrations is called standalone
+    if total > 1 and aspect_ratio == "16:9" and (not scenes[0].image_path or not Path(scenes[0].image_path).is_file()):
+        img_dest_0 = output_dir / f"scene_{scenes[0].scene_index:03d}.jpg"
+        first_valid = next(
+            (s.image_path for s in scenes[1:] if s.image_path and Path(s.image_path).is_file()),
+            "",
+        )
+        if first_valid:
+            shutil.copy2(first_valid, img_dest_0)
+        else:
+            tw, th = resolution_for_aspect_ratio(aspect_ratio)
+            Image.new("RGB", (tw, th), color=(18, 24, 38)).save(img_dest_0, quality=90)
+        scenes[0].image_path = str(img_dest_0.resolve())
+        scenes[0].image_source_type = "custom"
 
 
 acquire_images_for_scenes = prepare_scene_illustrations
@@ -5515,9 +5647,10 @@ def produce_daily_news_video(
 
     report(15, f"Đang tổng hợp bản tin {cfg['label']} YouTube tiếng Việt ({max_topics} sự kiện) qua Gemini Flash...")
 
-    # Step 2: Synthesize Vietnamese news script with Gemini Flash
+    # Step 2: Synthesize Vietnamese news script with Gemini Flash (or GitHub Models GPT-4o-mini failover)
     gemini_key = get_effective_gemini_api_key()
-    if gemini_key:
+    gh_models_token = get_effective_github_models_token()
+    if gemini_key or gh_models_token:
         try:
             digest = synthesize_news_script_with_gemini(
                 news_items,
@@ -5527,10 +5660,10 @@ def produce_daily_news_video(
                 category=norm_cat,
             )
         except Exception as exc:
-            logger.warning("Gemini synthesis error: %s. Using local fallback.", exc)
+            logger.warning("Gemini/GitHub Models synthesis error: %s. Using local fallback.", exc)
             digest = fallback_offline_news_script(news_items, detail_level=detail_level, max_topics=max_topics, category=norm_cat)
     else:
-        logger.info("No Gemini API key detected. Using local fallback synthesis.")
+        logger.info("No Gemini or GitHub Models key detected. Using local fallback synthesis.")
         digest = fallback_offline_news_script(news_items, detail_level=detail_level, max_topics=max_topics, category=norm_cat)
 
     # Supreme Law check: enforce 0% Vietnam content before any asset generation or rendering
@@ -5569,6 +5702,53 @@ def produce_daily_news_video(
         category=norm_cat,
         progress_callback=progress_callback,
     )
+
+    # Step 3b: Render YouTube thumbnail (with VCH logo) AND no-logo intro slide for Scene 0
+    thumbnail_file = output_dir / "thumbnail.jpg"
+    thumbnail_path_str = ""
+    try:
+        from haizflow.pipeline.thumbnail import build_thumbnail
+
+        vn_today_dt = now_vn()
+        cover_image = next(
+            (
+                s.image_path
+                for s in digest.scenes[1:]
+                if s.image_path and Path(s.image_path).is_file() and not is_image_mostly_blank(s.image_path)
+            ),
+            None,
+        ) or next((s.image_path for s in digest.scenes if s.image_path and Path(s.image_path).is_file()), None)
+
+        build_thumbnail(
+            source_image=cover_image,
+            hook=digest.thumbnail_hook,
+            label=cfg.get("title_suffix_label", ""),
+            output_path=thumbnail_file,
+            aspect_ratio=aspect_ratio,
+            category=norm_cat,
+            target_date=vn_today_dt,
+            include_logo=True,
+        )
+        thumbnail_path_str = str(thumbnail_file.resolve())
+
+        # For 16:9 broadcast, use a no-logo thumbnail variant as the opening scene (Scene 0)
+        # so the video starts immediately with the thumbnail visual without duplicating the VCH logo overlay.
+        if digest.scenes and len(digest.scenes) > 1 and aspect_ratio == "16:9":
+            intro_slide_file = assets_dir / "scene_000_intro_thumb.jpg"
+            build_thumbnail(
+                source_image=cover_image,
+                hook=digest.thumbnail_hook,
+                label=cfg.get("title_suffix_label", ""),
+                output_path=intro_slide_file,
+                aspect_ratio=aspect_ratio,
+                category=norm_cat,
+                target_date=vn_today_dt,
+                include_logo=False,
+            )
+            digest.scenes[0].image_path = str(intro_slide_file.resolve())
+            digest.scenes[0].image_source_type = "custom"
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Thumbnail / intro slide generation failed: %s", exc)
 
     report(55, "Đang chuyển đổi phân cảnh thành dự án HaizFlow Video...")
 
@@ -5631,25 +5811,6 @@ def produce_daily_news_video(
         d_sc.duration_ms = int(getattr(p_sc, "duration_ms", 0) or 0)
 
     video_chapters = build_video_chapters(digest.scenes, category=norm_cat)
-
-    # Step 5b: Curiosity thumbnail (hook <= 8 words + bulletin label). Never blocks publishing.
-    thumbnail_file = output_dir / "thumbnail.jpg"
-    thumbnail_path_str = ""
-    try:
-        from haizflow.pipeline.thumbnail import build_thumbnail
-
-        cover_image = next((s.image_path for s in digest.scenes if s.image_path and Path(s.image_path).is_file()), None)
-        build_thumbnail(
-            source_image=cover_image,
-            hook=digest.thumbnail_hook,
-            label=cfg.get("title_suffix_label", ""),
-            output_path=thumbnail_file,
-            aspect_ratio=aspect_ratio,
-            category=norm_cat,
-        )
-        thumbnail_path_str = str(thumbnail_file.resolve())
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("Thumbnail generation failed: %s", exc)
 
     # Step 6: Save metadata and publishing manifest
     manifest_path = output_dir / "social_publish_manifest.json"

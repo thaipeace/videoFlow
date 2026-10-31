@@ -7,8 +7,10 @@ from unittest.mock import patch
 from haizflow.services.daily_news import (
     DailyNewsScene,
     WorldNewsItem,
+    _parse_editorial_json_response,
     build_hook_title,
     build_video_chapters,
+    call_github_models_editorial_fallback,
     fallback_offline_news_script,
     format_youtube_description_with_sources,
     get_mock_news_items,
@@ -131,6 +133,30 @@ class TinMoiChapterTests(unittest.TestCase):
         self.assertIn("00:14 Thời sự & Kinh tế Thế giới", desc)
         self.assertIn("00:49 Điểm nóng Chiến sự & An ninh", desc)
         self.assertIn("01:29 Thể thao & Sân cỏ Quốc tế", desc)
+
+    def test_parse_editorial_json_and_github_models_fallback(self):
+        fenced = '```json\n{"hook_title": "Test", "scenes": [{"scene_index": 0, "text": "A"}, {"scene_index": 1, "text": "B"}]}\n```'
+        parsed = _parse_editorial_json_response(fenced)
+        self.assertEqual(parsed["hook_title"], "Test")
+        self.assertEqual(len(parsed["scenes"]), 2)
+
+        class _FakeResp:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                pass
+
+            def read(self):
+                import json
+                return json.dumps({
+                    "choices": [{"message": {"content": fenced}}]
+                }).encode("utf-8")
+
+        with patch("urllib.request.urlopen", return_value=_FakeResp()):
+            res = call_github_models_editorial_fallback("prompt", token="ghp_test_token")
+            self.assertIsNotNone(res)
+            self.assertEqual(res["hook_title"], "Test")
 
 
 if __name__ == "__main__":
