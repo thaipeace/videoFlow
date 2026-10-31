@@ -14,6 +14,8 @@ from haizflow.services.daily_news import (
     fallback_offline_news_script,
     format_youtube_description_with_sources,
     get_mock_news_items,
+    is_image_mostly_blank,
+    prepare_scene_illustrations,
     sanitize_thumbnail_hook,
     strip_leading_greeting,
 )
@@ -157,6 +159,43 @@ class TinMoiChapterTests(unittest.TestCase):
             res = call_github_models_editorial_fallback("prompt", token="ghp_test_token")
             self.assertIsNotNone(res)
             self.assertEqual(res["hook_title"], "Test")
+
+    def test_shorts_outro_scene_never_falls_back_to_black_screen(self):
+        import tempfile
+        from pathlib import Path
+        from PIL import Image, ImageDraw
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            scenes = [
+                DailyNewsScene(scene_index=0, text="Hook", image_url="https://example.com/story.jpg"),
+                DailyNewsScene(scene_index=1, text="Body", image_url="https://example.com/story.jpg"),
+                DailyNewsScene(scene_index=2, text="Outro CTA", image_url=""),
+            ]
+
+            def _fake_download(url, dest, aspect_ratio="9:16", **kwargs):
+                img = Image.new("RGB", (1080, 1920), color=(40, 120, 200))
+                draw = ImageDraw.Draw(img)
+                for y in range(0, 1920, 60):
+                    draw.rectangle([0, y, 1080, y + 30], fill=(220, 180, 60))
+                img.save(dest, quality=90)
+                return True
+
+            with (
+                patch("haizflow.services.daily_news.download_and_format_image", side_effect=_fake_download) as mock_dl,
+                patch("haizflow.services.daily_news.search_wikimedia_commons", return_value=("", "")),
+                patch("haizflow.services.daily_news.generate_scene_image", side_effect=RuntimeError("AI unavailable")),
+            ):
+                prepare_scene_illustrations(scenes, tmp_path, aspect_ratio="9:16", category="hope")
+
+                # Only downloaded once over HTTP, reused for Scene 1, and rescued for Scene 2
+                self.assertEqual(mock_dl.call_count, 1)
+                for sc in scenes:
+                    self.assertTrue(Path(sc.image_path).is_file())
+                    self.assertFalse(is_image_mostly_blank(Path(sc.image_path)))
+                    self.assertEqual(sc.image_source_type, "direct_photo")
+                # Distinct file paths preserved so each scene gets its own Ken Burns camera motion
+                self.assertNotEqual(scenes[1].image_path, scenes[2].image_path)
 
 
 if __name__ == "__main__":

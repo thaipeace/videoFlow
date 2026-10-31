@@ -3247,11 +3247,28 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
             cand = matched_item.image_url
             item_img = cand if not is_placeholder_image_url(cand) else ""
             item_plat = matched_item.social_platform
+        elif category in ("viral", "hope", "ai") and max_topics == 1:
+            # 1-topic Short (3 scenes: Hook, Body, Outro/CTA): all scenes belong to the same single story.
+            # Ensure Scene 2 (Outro/CTA) and Scene 0 (Hook) inherit the story's real photo so Scene 2 never falls back to a black screen.
+            donor_scene = next((prev for prev in reversed(scenes) if prev.image_url and not is_placeholder_image_url(prev.image_url)), None)
+            if donor_scene:
+                item_img = donor_scene.image_url
+                item_plat = donor_scene.social_platform
+            elif news_items:
+                cand = news_items[0].image_url
+                item_img = cand if not is_placeholder_image_url(cand) else ""
+                item_plat = news_items[0].social_platform
         elif category not in ("viral", "hope", "ai") and idx == 0 and news_items:
             # Long-form standard broadcast: hook uses first topic photo if available
             cand = news_items[0].image_url
             item_img = cand if not is_placeholder_image_url(cand) else ""
             item_plat = news_items[0].social_platform
+        elif idx == total_raw - 1:
+            # Outro scene in multi-topic video: inherit nearest valid photo so Outro never renders as a blank black screen
+            donor_scene = next((prev for prev in reversed(scenes) if prev.image_url and not is_placeholder_image_url(prev.image_url)), None)
+            if donor_scene:
+                item_img = donor_scene.image_url
+                item_plat = donor_scene.social_platform
 
         scene_text_str = str(s.get("text", "")).strip()
         scene_entity_str = str(s.get("entity_query", "")).strip()
@@ -3800,12 +3817,12 @@ def fallback_offline_news_script(
                 DailyNewsScene(
                     scene_index=2,
                     text="Một sự cố dở khóc dở cười! Đăng ký kênh để đón xem tin độc lạ mỗi ngày.",
-                    entity_query="Social media creator smartphone studio",
-                    ai_prompt="cinematic 9:16 smartphone screen with subscribe button and glowing social media likes",
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
                     has_transition_cue=True,
-                    image_url="",
-                    social_platform="x",
-                    source="",
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             title = build_hook_title(vi_title, norm_cat, now_dt)
@@ -3953,12 +3970,12 @@ def fallback_offline_news_script(
                 DailyNewsScene(
                     scene_index=2,
                     text="Kỳ tích mở ra tương lai tươi sáng! Đăng ký kênh đón nhận tin vui mỗi ngày.",
-                    entity_query="Futuristic clean technology globe sunrise",
-                    ai_prompt="cinematic vertical 9:16 sunrise over thriving green planet Earth, inspiring future, glowing subscribe button",
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
                     has_transition_cue=True,
-                    image_url="",
-                    social_platform="x",
-                    source="",
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             title = build_hook_title(vi_title, norm_cat, now_dt)
@@ -4105,12 +4122,12 @@ def fallback_offline_news_script(
                 DailyNewsScene(
                     scene_index=2,
                     text="Kỷ nguyên AI đang thay đổi tương lai! Đăng ký kênh đón xem bước tiến công nghệ mỗi ngày.",
-                    entity_query="Futuristic AI processor glowing core",
-                    ai_prompt="cinematic vertical 9:16 futuristic AI glowing neural network processor core, neon accents, glowing subscribe button",
+                    entity_query=extract_search_keywords_from_headline(item.title, category=category),
+                    ai_prompt=ai_prompt_val,
                     has_transition_cue=True,
-                    image_url="",
-                    social_platform="x",
-                    source="",
+                    image_url=item.image_url,
+                    social_platform=item.social_platform,
+                    source=item.source,
                 )
             )
             title = build_hook_title(vi_title, norm_cat, now_dt)
@@ -4646,16 +4663,39 @@ def prepare_scene_illustrations(
             scene.image_source_type = source_type
             acquired = True
 
-        # Category: World / Tech / Sports / Hope (Direct Article Photo -> Wikimedia -> AI Cinematic)
+        # Category: World / Tech / Sports / Hope / AI (Direct Article Photo -> Wikimedia -> AI Cinematic)
         if not acquired and prefer_real_images and scene.image_url and not is_placeholder_image_url(scene.image_url):
-            try:
-                if download_and_format_image(scene.image_url, img_dest, aspect_ratio=aspect_ratio):
-                    if not is_image_mostly_blank(img_dest):
-                        scene.image_path = str(img_dest.resolve())
-                        scene.image_source_type = "direct_photo"
-                        acquired = True
-            except Exception as dl_err:
-                logger.debug("Direct photo fetch failed for scene %d: %s", idx, dl_err)
+            # Reuse already-downloaded photo if an earlier scene in this run fetched the exact same image_url
+            already_fetched = next(
+                (
+                    prev
+                    for prev in scenes[:idx]
+                    if prev.image_url == scene.image_url
+                    and prev.image_source_type == "direct_photo"
+                    and prev.image_path
+                    and Path(prev.image_path).is_file()
+                    and not is_image_mostly_blank(prev.image_path)
+                ),
+                None,
+            )
+            if already_fetched:
+                try:
+                    shutil.copy2(already_fetched.image_path, img_dest)
+                    scene.image_path = str(img_dest.resolve())
+                    scene.image_source_type = "direct_photo"
+                    acquired = True
+                except Exception as copy_err:
+                    logger.debug("Copy of already fetched photo failed for scene %d: %s", idx, copy_err)
+
+            if not acquired:
+                try:
+                    if download_and_format_image(scene.image_url, img_dest, aspect_ratio=aspect_ratio):
+                        if not is_image_mostly_blank(img_dest):
+                            scene.image_path = str(img_dest.resolve())
+                            scene.image_source_type = "direct_photo"
+                            acquired = True
+                except Exception as dl_err:
+                    logger.debug("Direct photo fetch failed for scene %d: %s", idx, dl_err)
 
         if not acquired and prefer_real_images and scene.entity_query:
             try:
@@ -4694,13 +4734,57 @@ def prepare_scene_illustrations(
             except Exception as exc:
                 logger.warning("AI image generation failed for scene %d (%s). Creating fallback card.", idx, exc)
 
-        # Emergency fallback: create a clean dark gradient news slide
+        # Emergency fallback: create a clean dark gradient news slide (will be replaced below if any scene has a real image)
         if not acquired or not Path(scene.image_path).is_file():
             tw, th = resolution_for_aspect_ratio(aspect_ratio)
             card = Image.new("RGB", (tw, th), color=(18, 24, 38))
             card.save(img_dest, quality=90)
             scene.image_path = str(img_dest.resolve())
             scene.image_source_type = "custom"
+
+    # Never leave any scene (especially Scene 2 Outro/CTA in Shorts or Outro in 16:9) with a blank dark screen
+    # if at least one scene in the video acquired a valid, non-blank visual.
+    valid_scenes = [
+        s
+        for s in scenes
+        if s.image_path
+        and Path(s.image_path).is_file()
+        and s.image_source_type != "custom"
+        and not is_image_mostly_blank(s.image_path)
+    ]
+    if valid_scenes:
+        for idx, sc in enumerate(scenes):
+            needs_rescue = (
+                not sc.image_path
+                or not Path(sc.image_path).is_file()
+                or sc.image_source_type == "custom"
+                or is_image_mostly_blank(sc.image_path)
+            )
+            if not needs_rescue:
+                continue
+            # Prefer nearest preceding valid scene (ideal for Outro/Scene 2), otherwise first valid scene
+            donor = next(
+                (
+                    prev
+                    for prev in reversed(scenes[:idx])
+                    if prev in valid_scenes
+                ),
+                valid_scenes[0],
+            )
+            dest_file = output_dir / f"scene_{sc.scene_index:03d}.jpg"
+            try:
+                if Path(donor.image_path).resolve() != dest_file.resolve():
+                    shutil.copy2(donor.image_path, dest_file)
+                sc.image_path = str(dest_file.resolve())
+                sc.image_source_type = donor.image_source_type
+                logger.info(
+                    "Rescued blank fallback on scene %d using real visual from scene %d (%s)",
+                    sc.scene_index,
+                    donor.scene_index,
+                    donor.image_source_type,
+                )
+            except Exception as rescue_err:
+                logger.debug("Could not copy donor visual for scene %d: %s", sc.scene_index, rescue_err)
 
     # Ensure scene 0 always has a valid file on disk even if prepare_scene_illustrations is called standalone
     if total > 1 and aspect_ratio == "16:9" and (not scenes[0].image_path or not Path(scenes[0].image_path).is_file()):
