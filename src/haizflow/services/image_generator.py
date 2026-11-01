@@ -230,6 +230,89 @@ def _safe_progress(cb: Optional[Callable[[str], None]], message: str) -> None:
             pass
 
 
+def _call_hf_gradio_space(
+    prompt: str,
+    aspect_ratio: str = "16:9",
+    seed: int = 12345,
+    timeout_seconds: float = 40.0,
+) -> Optional[bytes]:
+    """Try fast keyless Hugging Face ZeroGPU Gradio spaces (FLUX.1-Schnell and SD3.5-Large-Turbo)."""
+    w_hf, h_hf = (1024, 576) if aspect_ratio == "16:9" else (576, 1024) if aspect_ratio == "9:16" else (1024, 1024)
+    target_w, target_h = (1920, 1080) if aspect_ratio == "16:9" else (1080, 1920) if aspect_ratio == "9:16" else (1080, 1080)
+    safe_seed = int(abs(seed)) % 2147483647
+    spaces = [
+        (
+            "https://black-forest-labs-flux-1-schnell.hf.space",
+            [prompt, safe_seed, False, w_hf, h_hf, 4],
+        ),
+        (
+            "https://stabilityai-stable-diffusion-3-5-large-turbo.hf.space",
+            [prompt, "blurry, low quality, deformed, text, watermark, logo", safe_seed, False, w_hf, h_hf, 0.0, 4],
+        ),
+    ]
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    }
+    for host, data_payload in spaces:
+        try:
+            call_req = Request(
+                f"{host}/gradio_api/call/infer",
+                data=json.dumps({"data": data_payload}).encode("utf-8"),
+                headers=headers,
+                method="POST",
+            )
+            with urlopen(call_req, timeout=15.0) as resp:
+                call_res = json.loads(resp.read().decode("utf-8"))
+            event_id = call_res.get("event_id")
+            if not event_id:
+                continue
+
+            sse_req = Request(
+                f"{host}/gradio_api/call/infer/{event_id}",
+                headers={"User-Agent": headers["User-Agent"]},
+            )
+            with urlopen(sse_req, timeout=timeout_seconds) as sse_resp:
+                sse_text = sse_resp.read().decode("utf-8", errors="ignore")
+
+            file_url = ""
+            for line in sse_text.splitlines():
+                if line.startswith("data:"):
+                    raw_json = line[5:].strip()
+                    try:
+                        parsed = json.loads(raw_json)
+                        if isinstance(parsed, list) and parsed and isinstance(parsed[0], dict):
+                            file_url = parsed[0].get("url") or ""
+                            if not file_url and parsed[0].get("path"):
+                                file_url = f"{host}/gradio_api/file={parsed[0]['path']}"
+                            if file_url:
+                                break
+                    except Exception:
+                        pass
+
+            if not file_url:
+                continue
+
+            img_req = Request(file_url, headers={"User-Agent": headers["User-Agent"]})
+            with urlopen(img_req, timeout=20.0) as img_resp:
+                img_bytes = img_resp.read()
+
+            if img_bytes and len(img_bytes) > 5000:
+                with Image.open(BytesIO(img_bytes)) as img:
+                    img = img.convert("RGB")
+                    resized = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+                    buf = BytesIO()
+                    resized.save(buf, format="JPEG", quality=92)
+                    out_bytes = buf.getvalue()
+                    if len(out_bytes) > 5000:
+                        logger.info("Generated AI image via %s (%d bytes)", host, len(out_bytes))
+                        return out_bytes
+        except Exception as exc:
+            logger.debug("HF Gradio space %s failed: %s", host, exc)
+            continue
+    return None
+
+
 def call_free_ai_api(
     prompt: str,
     aspect_ratio: str = "16:9",
@@ -240,12 +323,31 @@ def call_free_ai_api(
     progress_callback: Optional[Callable[[str], None]] = None,
     cancel_event: Optional[Event] = None,
 ) -> bytes:
-    """Generate image via free community AI endpoints with automatic 45s rate-limit pacing and retry."""
+    """Generate image via free community AI endpoints with multi-provider failover and rate-limit retry."""
     key = get_effective_pollen_key(pollinations_key)
 
     clean = prompt.strip().replace("\n", " ")
-    # Ensure purely Vietnamese visual harness is applied in every prompt
-    if "vietnamese" not in clean.lower():
+    lower_clean = clean.lower()
+    is_international_or_tech = any(
+        kw in lower_clean
+        for kw in (
+            "artificial intelligence",
+            "neural network",
+            "futuristic",
+            "news photography",
+            "news scene",
+            "35mm",
+            "cybernetic",
+            "robotics",
+            "quantum",
+            "humanoid robot",
+            "international",
+        )
+    )
+    if is_international_or_tech:
+        if "no watermark" not in lower_clean:
+            clean = f"{clean}, high resolution, detailed background, strictly no text, no watermark"
+    elif "vietnamese" not in lower_clean:
         clean = (
             f"{clean}, authentic Vietnamese people, authentic Vietnamese ethnicity, "
             f"authentic Vietnamese scenery and architecture, detailed background, strictly no text, no watermark"
@@ -254,6 +356,18 @@ def call_free_ai_api(
     short_prompt = clean[:500] if len(clean) > 500 else clean
     w, h = (768, 432) if aspect_ratio == "16:9" else (432, 768) if aspect_ratio == "9:16" else (512, 512)
     effective_seed = seed if seed is not None else (abs(hash(clean)) % 10000000)
+
+    # 1. Try fast keyless Hugging Face ZeroGPU Gradio spaces first (FLUX.1-Schnell / SD3.5-Large-Turbo)
+    if not key:
+        hf_bytes = _call_hf_gradio_space(
+            prompt=short_prompt,
+            aspect_ratio=aspect_ratio,
+            seed=effective_seed,
+            timeout_seconds=min(timeout_seconds, 45.0),
+        )
+        if hf_bytes:
+            return hf_bytes
+
     encoded = quote(short_prompt, safe="")
     url = f"https://image.pollinations.ai/prompt/{encoded}?width={w}&height={h}&nologo=true&seed={effective_seed}"
     if key:
@@ -305,10 +419,10 @@ def call_free_ai_api(
                     except Exception:
                         return data
         except HTTPError as exc:
-            if exc.code == 402 and retry_if_rate_limited and attempt < max_attempts - 1:
-                wait_sec = 46
+            if exc.code in (402, 429, 503) and retry_if_rate_limited and attempt < max_attempts - 1:
+                wait_sec = 46 if exc.code == 402 else 15
                 _set_last_free_ai_time(time.time())
-                logger.info("Free AI rate limit hit. Waiting %ds to retry (attempt %d)...", wait_sec, attempt + 1)
+                logger.info("Free AI HTTP %d hit. Waiting %ds to retry (attempt %d)...", exc.code, wait_sec, attempt + 1)
                 for s in range(wait_sec, 0, -1):
                     if cancel_event and cancel_event.is_set():
                         raise RuntimeError("Tiến trình tạo ảnh đã bị hủy.")

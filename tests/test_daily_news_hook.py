@@ -197,6 +197,79 @@ class TinMoiChapterTests(unittest.TestCase):
                 # Distinct file paths preserved so each scene gets its own Ken Burns camera motion
                 self.assertNotEqual(scenes[1].image_path, scenes[2].image_path)
 
+    def test_ai_category_strictly_uses_ai_generation_and_fails_on_error(self):
+        import tempfile
+        from pathlib import Path
+        from PIL import Image, ImageDraw
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            scenes = [
+                DailyNewsScene(scene_index=0, text="Hook AI", ai_prompt="AI chip", image_url="https://example.com/real_photo.jpg"),
+                DailyNewsScene(scene_index=1, text="Body AI", ai_prompt="Neural net", image_url="https://example.com/real_photo.jpg"),
+            ]
+
+            def _fake_ai_gen(prompt, destination_path, aspect_ratio="9:16", style="cinematic", use_cache=False, allow_free_online=True):
+                img = Image.new("RGB", (1080, 1920), color=(30, 90, 180))
+                draw = ImageDraw.Draw(img)
+                for y in range(0, 1920, 40):
+                    draw.rectangle([0, y, 1080, y + 20], fill=(100, 220, 250))
+                img.save(destination_path, quality=92)
+                return destination_path
+
+            with (
+                patch("haizflow.services.daily_news.download_and_format_image") as mock_dl,
+                patch("haizflow.services.daily_news.search_wikimedia_commons") as mock_wiki,
+                patch("haizflow.services.daily_news.generate_scene_image", side_effect=_fake_ai_gen) as mock_ai,
+            ):
+                prepare_scene_illustrations(scenes, tmp_path, aspect_ratio="9:16", category="ai")
+                # Must NEVER download real article photos or query Wikimedia for AI category
+                mock_dl.assert_not_called()
+                mock_wiki.assert_not_called()
+                self.assertEqual(mock_ai.call_count, 2)
+                for sc in scenes:
+                    self.assertEqual(sc.image_source_type, "ai_generated")
+                    self.assertTrue(Path(sc.image_path).is_file())
+
+            # Verify fail-fast: if online AI rendering fails, must raise RuntimeError (no fallback card)
+            fail_scenes = [DailyNewsScene(scene_index=0, text="Hook AI", ai_prompt="AI chip")]
+            with patch("haizflow.services.daily_news.generate_scene_image", side_effect=RuntimeError("All AI servers down")):
+                with self.assertRaises(RuntimeError):
+                    prepare_scene_illustrations(fail_scenes, tmp_path, aspect_ratio="9:16", category="ai")
+
+    def test_ai_clustering_does_not_merge_unrelated_company_stories(self):
+        from haizflow.services.daily_news import cluster_and_rank_news_topics
+
+        items = [
+            WorldNewsItem(
+                title="Pentagon gives Anthropic Friday deadline to loosen AI policy",
+                summary="Defense officials set a deadline.",
+                source="Google News",
+                published="Today",
+                link="https://news.com/a",
+            ),
+            WorldNewsItem(
+                title="How a Contractor's Claude Agent Got Into the Pentagon",
+                summary="A contractor built an agent.",
+                source="Wired",
+                published="Today",
+                link="https://wired.com/b",
+                image_url="https://media.wired.com/anthropic-ipo.jpg",
+            ),
+            WorldNewsItem(
+                title="Anthropic unveils new enterprise security framework for banking",
+                summary="Enterprise security announcement.",
+                source="TechCrunch",
+                published="Today",
+                link="https://techcrunch.com/c",
+            ),
+        ]
+        clustered = cluster_and_rank_news_topics(items, max_topics=5, category="ai")
+        # All 3 are distinct stories and must NOT collapse into 1 cluster or steal Wired's image_url
+        self.assertEqual(len(clustered), 3)
+        pentagon_deadline = next(it for it in clustered if "deadline" in it.title.lower())
+        self.assertEqual(pentagon_deadline.image_url, "")
+
 
 if __name__ == "__main__":
     unittest.main()

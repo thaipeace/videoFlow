@@ -249,14 +249,14 @@ HOPE_RSS_FEEDS = [
 
 # International AI & Frontier Tech RSS Feeds (AI breakthroughs, OpenAI, DeepMind, Anthropic, Nvidia, Robotics)
 AI_RSS_FEEDS = [
-    # 1. Google News - AI Breakthroughs, Models & Robotics
-    "https://news.google.com/rss/search?q=(%22artificial+intelligence%22+OR+OpenAI+OR+ChatGPT+OR+%22Google+DeepMind%22+OR+Anthropic+OR+Claude+OR+Gemini+OR+Nvidia+OR+robotics)+AND+(breakthrough+OR+launch+OR+model+OR+chip+OR+robot)+-vietnam&hl=en-US&gl=US&ceid=US:en",
+    # 1. Google News - AI Breakthroughs, Models & Robotics (strictly last 48h via when:2d)
+    "https://news.google.com/rss/search?q=(%22artificial+intelligence%22+OR+OpenAI+OR+ChatGPT+OR+%22Google+DeepMind%22+OR+Anthropic+OR+Claude+OR+Gemini+OR+Nvidia+OR+robotics)+AND+(breakthrough+OR+launch+OR+model+OR+chip+OR+robot)+-vietnam+when:2d&hl=en-US&gl=US&ceid=US:en",
     # 2. TechCrunch - Dedicated Artificial Intelligence category
     "https://techcrunch.com/category/artificial-intelligence/feed/",
     # 3. The Verge - Dedicated AI & Automation feed
     "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
-    # 4. Google News - Generative AI & Autonomous Systems
-    "https://news.google.com/rss/search?q=(%22generative+AI%22+OR+%22LLM%22+OR+%22humanoid+robot%22+OR+robotics+OR+%22OpenAI%22+OR+%22Anthropic%22+OR+%22Google+DeepMind%22+OR+%22Nvidia+AI%22)+-vietnam&hl=en-US&gl=US&ceid=US:en",
+    # 4. Google News - Generative AI & Autonomous Systems (strictly last 48h via when:2d)
+    "https://news.google.com/rss/search?q=(%22generative+AI%22+OR+%22LLM%22+OR+%22humanoid+robot%22+OR+robotics+OR+%22OpenAI%22+OR+%22Anthropic%22+OR+%22Google+DeepMind%22+OR+%22Nvidia+AI%22)+-vietnam+when:2d&hl=en-US&gl=US&ceid=US:en",
     # 5. BBC News - Technology & AI Frontier
     "https://feeds.bbci.co.uk/news/technology/rss.xml",
     # 6. Ars Technica - Cutting-edge AI, Compute & Machine Learning
@@ -713,8 +713,8 @@ def is_within_time_window(
         # Evergreen viral humor, cute animals, and funny clips from any date are accepted.
         # Deduplication is handled strictly via published_news_history.json.
         return True
-    elif norm_cat == "hope":
-        # Limit to 48 hours to avoid weeks-old articles while allowing quality research pieces
+    elif norm_cat in ("hope", "ai"):
+        # Limit to 48 hours to avoid weeks-old articles while allowing quality breaking/research pieces
         return (now - dt) <= timedelta(hours=48)
 
     return True
@@ -866,15 +866,19 @@ def record_published_news_history(news_items: List[Any], category: str) -> None:
     for it in news_items:
         t = getattr(it, "title", "")
         link = getattr(it, "link", "")
+        img_u = getattr(it, "image_url", "")
         norm_t = _normalize_title_for_dedup(t)
         if norm_t and norm_t not in existing_keys:
-            history.append({
+            entry_dict: Dict[str, Any] = {
                 "title": t,
                 "normalized_title": norm_t,
                 "link": link,
                 "category": norm_cat,
                 "timestamp": now_iso,
-            })
+            }
+            if img_u:
+                entry_dict["image_url"] = img_u
+            history.append(entry_dict)
             existing_keys.add(norm_t)
             if link:
                 existing_links.add(link)
@@ -1671,11 +1675,11 @@ def calculate_ai_score(item: Any) -> float:
 
     Prioritizes stories from major AI labs (OpenAI, Google DeepMind, Anthropic, Nvidia)
     and breakthroughs in LLMs, humanoid robots, AI chips, and groundbreaking models.
+    Scored strictly on the primary item's own title and summary (not merged cluster text).
     """
     title = getattr(item, "title", "")
     summary = getattr(item, "summary", "")
-    full_text = getattr(item, "full_text", "")
-    full = f"{title} {summary} {full_text}".lower()
+    full = f"{title} {summary}".lower()
 
     score = 10.0
     tier_1_keywords = (
@@ -1702,10 +1706,7 @@ def calculate_ai_score(item: Any) -> float:
             score += 30.0
             break
 
-    score += min(len(full_text) * 0.005, 10.0)
-    if getattr(item, "image_url", ""):
-        score += 5.0
-
+    score += min(len(summary) * 0.01, 10.0)
     return score
 
 
@@ -2033,6 +2034,18 @@ TOPIC_STOPWORDS = frozenset({
 })
 
 
+GENERIC_CLUSTER_TERMS = frozenset({
+    "anthropic", "claude", "openai", "chatgpt", "google", "deepmind", "gemini",
+    "nvidia", "microsoft", "apple", "amazon", "artificial", "intelligence",
+    "robotics", "robots", "robot", "models", "model", "agent", "agents",
+    "system", "systems", "company", "companies", "startup", "startups",
+    "launch", "launches", "unveils", "announces", "billion", "million",
+    "technology", "research", "researchers", "scientists", "university",
+    "government", "pentagon", "security", "global", "market", "industry",
+    "future", "update", "feature", "features", "software", "hardware",
+})
+
+
 def extract_topic_keywords(text: str) -> set[str]:
     """Extract significant entity keywords for clustering news items by event/topic."""
     words = re.findall(r"\w+", text.lower())
@@ -2062,9 +2075,11 @@ def cluster_and_rank_news_topics(
 
         matched_cluster = None
         for cl in clusters:
-            overlap = kw & cl["keywords"]
-            # Two items match if they share 2+ significant words, or 1 strong proper noun/term (>= 6 chars)
-            if len(overlap) >= 2 or (len(overlap) >= 1 and any(len(w) >= 6 for w in overlap)):
+            seed_kw = cl["seed_keywords"]
+            overlap = kw & seed_kw
+            specific_overlap = overlap - GENERIC_CLUSTER_TERMS
+            # Require at least 2 specific event words, or 3+ total shared words with >=1 specific word
+            if len(specific_overlap) >= 2 or (len(overlap) >= 3 and len(specific_overlap) >= 1):
                 matched_cluster = cl
                 break
 
@@ -2073,7 +2088,8 @@ def cluster_and_rank_news_topics(
             matched_cluster["keywords"].update(kw)
         else:
             clusters.append({
-                "keywords": kw,
+                "seed_keywords": set(kw),
+                "keywords": set(kw),
                 "items": [item],
             })
 
@@ -2082,6 +2098,7 @@ def cluster_and_rank_news_topics(
     for cl in clusters:
         cluster_items: List[WorldNewsItem] = cl["items"]
         primary = max(cluster_items, key=lambda it: len(it.full_text) * 2 + len(it.title))
+        primary_kw = extract_topic_keywords(primary.title)
 
         # Combine sources if from different reputable publishers
         unique_sources = []
@@ -2101,7 +2118,12 @@ def cluster_and_rank_news_topics(
                 seen_texts.add(clean_txt)
 
         merged_full_text = " ".join(all_texts) if all_texts else primary.full_text
-        primary_image = next((it.image_url for it in cluster_items if it.image_url), primary.image_url)
+        primary_image = primary.image_url
+        if not primary_image:
+            for it in cluster_items:
+                if it.image_url and len((extract_topic_keywords(it.title) & primary_kw) - GENERIC_CLUSTER_TERMS) >= 2:
+                    primary_image = it.image_url
+                    break
         primary_platform = next((it.social_platform for it in cluster_items if it.social_platform), primary.social_platform)
 
         u_item = WorldNewsItem(
@@ -2251,6 +2273,11 @@ def fetch_world_news_rss(
         published_history = load_published_news_history(max_age_days=None)
     except Exception as exc:
         logger.warning("Could not load published news history: %s", exc)
+    used_history_images: set[str] = {
+        str(h.get("image_url") or "").strip()
+        for h in published_history
+        if isinstance(h, dict) and h.get("image_url")
+    }
 
     cfg = get_category_config(category)
     feed_urls = cfg.get("feeds", WORLD_RSS_FEEDS)
@@ -2284,21 +2311,39 @@ def fetch_world_news_rss(
         try:
             root = ET.fromstring(xml_data)
             channel = root.find("channel")
-            if channel is None:
+            if channel is not None:
+                entries = channel.findall("item")
+            else:
+                entries = root.findall("{http://www.w3.org/2005/Atom}entry") or root.findall("entry")
+            if not entries:
                 continue
 
             feed_items_count = 0
             max_per_feed = 6
-            for entry in channel.findall("item"):
+            for entry in entries:
                 title_elem = entry.find("title")
+                if title_elem is None:
+                    title_elem = entry.find("{http://www.w3.org/2005/Atom}title")
                 desc_elem = entry.find("description")
+                if desc_elem is None:
+                    desc_elem = entry.find("{http://www.w3.org/2005/Atom}summary")
+                if desc_elem is None:
+                    desc_elem = entry.find("{http://www.w3.org/2005/Atom}content")
                 link_elem = entry.find("link")
+                if link_elem is None:
+                    link_elem = entry.find("{http://www.w3.org/2005/Atom}link")
                 pub_elem = entry.find("pubDate")
+                if pub_elem is None:
+                    pub_elem = entry.find("{http://www.w3.org/2005/Atom}published")
+                if pub_elem is None:
+                    pub_elem = entry.find("{http://www.w3.org/2005/Atom}updated")
                 src_elem = entry.find("source")
 
                 title = clean_html_text(title_elem.text if title_elem is not None else "")
                 desc = clean_html_text(desc_elem.text if desc_elem is not None else "")
-                link = link_elem.text.strip() if link_elem is not None and link_elem.text else ""
+                link = ""
+                if link_elem is not None:
+                    link = (link_elem.text or link_elem.get("href") or "").strip()
                 pub = pub_elem.text.strip() if pub_elem is not None and pub_elem.text else ""
                 raw_src = src_elem.text.strip() if src_elem is not None and src_elem.text else ""
                 src = extract_source_name(link or feed_url, raw_src)
@@ -2336,8 +2381,8 @@ def fetch_world_news_rss(
                     logger.info("Filtered out duplicate item from 7-day published history: %s", title)
                     continue
 
-                # Time window constraint: hope within 48h (viral has NO time restriction, accepts all dates)
-                if norm_cat == "hope" and pub:
+                # Time window constraint: hope and ai within 48h (viral has NO time restriction, accepts all dates)
+                if norm_cat in ("hope", "ai") and pub:
                     if not is_within_time_window(pub, export_dt, category=norm_cat):
                         logger.debug("Filtered out %s item outside freshness window: %s (%s)", category, title, pub)
                         continue
@@ -2387,7 +2432,9 @@ def fetch_world_news_rss(
                             if not is_placeholder_image_url(cand):
                                 item_image = cand
 
-                if item_image and is_placeholder_image_url(item_image):
+                if item_image and "ichef.bbci.co.uk/ace/standard/240/" in item_image:
+                    item_image = item_image.replace("/ace/standard/240/", "/ace/standard/1024/")
+                if item_image and (is_placeholder_image_url(item_image) or item_image in used_history_images):
                     item_image = ""
 
                 # Multi-platform identification (Reddit, TikTok, Threads, Instagram, Facebook, X)
@@ -2638,6 +2685,8 @@ def download_and_format_image(
 ) -> bool:
     if not image_url or is_placeholder_image_url(image_url):
         return False
+    if "ichef.bbci.co.uk/ace/standard/240/" in image_url:
+        image_url = image_url.replace("/ace/standard/240/", "/ace/standard/1024/")
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
@@ -4089,7 +4138,9 @@ def fallback_offline_news_script(
             cooked_facts = cook_summary_into_vietnamese(item, vi_title)
             core_narrative = _trim_to_complete_sentence(cooked_facts, max_words=38)
             core_sub = extract_core_visual_subject(clean_full_headline)
-            ai_prompt_val = f"cinematic 9:16 futuristic artificial intelligence laboratory, neural network visualization of {core_sub}, neon blue glow"
+            ai_prompt_hook = f"cinematic 9:16 futuristic artificial intelligence laboratory, neural network visualization of {core_sub}, wide-angle establishing shot, neon blue glow"
+            ai_prompt_body = f"cinematic 9:16 macro close-up of futuristic AI quantum processor and holographic neural data streams illustrating {core_sub}, cybernetic lighting"
+            ai_prompt_outro = f"cinematic 9:16 high-tech horizon of autonomous AI systems and glowing neural architecture inspired by {core_sub}, dramatic futuristic illumination"
 
             # Scene 0: Hook (10-12 words)
             scenes.append(
@@ -4097,9 +4148,9 @@ def fallback_offline_news_script(
                     scene_index=0,
                     text=f"Một bước đột phá trí tuệ nhân tạo vừa làm rung chuyển giới công nghệ: {vi_title}!",
                     entity_query=extract_search_keywords_from_headline(item.title, category=category),
-                    ai_prompt=ai_prompt_val,
+                    ai_prompt=ai_prompt_hook,
                     has_transition_cue=False,
-                    image_url=item.image_url,
+                    image_url="",
                     social_platform=item.social_platform,
                     source=item.source,
                 )
@@ -4110,9 +4161,9 @@ def fallback_offline_news_script(
                     scene_index=1,
                     text=core_narrative,
                     entity_query=extract_search_keywords_from_headline(item.title, category=category),
-                    ai_prompt=ai_prompt_val,
+                    ai_prompt=ai_prompt_body,
                     has_transition_cue=True,
-                    image_url=item.image_url,
+                    image_url="",
                     social_platform=item.social_platform,
                     source=item.source,
                 )
@@ -4123,9 +4174,9 @@ def fallback_offline_news_script(
                     scene_index=2,
                     text="Kỷ nguyên AI đang thay đổi tương lai! Đăng ký kênh đón xem bước tiến công nghệ mỗi ngày.",
                     entity_query=extract_search_keywords_from_headline(item.title, category=category),
-                    ai_prompt=ai_prompt_val,
+                    ai_prompt=ai_prompt_outro,
                     has_transition_cue=True,
-                    image_url=item.image_url,
+                    image_url="",
                     social_platform=item.social_platform,
                     source=item.source,
                 )
@@ -4608,6 +4659,12 @@ def prepare_scene_illustrations(
     """Acquire copyright-safe public domain images from Wikimedia or render social screenshot cards."""
     output_dir.mkdir(parents=True, exist_ok=True)
     total = len(scenes)
+    norm_cat = normalize_category(category) if category else "world"
+    ai_camera_angles = (
+        "wide-angle cinematic establishing shot, futuristic artificial intelligence visualization, volumetric neon glow",
+        "detailed macro close-up shot, glowing neural network quantum hardware and holographic data streams",
+        "dramatic high-tech horizon perspective, cybernetic illumination, futuristic research laboratory",
+    )
 
     for idx, scene in enumerate(scenes):
         pct = int(10 + (idx / max(1, total)) * 25)
@@ -4616,13 +4673,49 @@ def prepare_scene_illustrations(
 
         # Opening hook scene (idx == 0) in 16:9 broadcast uses the no-logo thumbnail slide directly;
         # no need to search Wikimedia or generate an AI image for it.
-        if idx == 0 and total > 1 and aspect_ratio == "16:9":
+        if idx == 0 and total > 1 and aspect_ratio == "16:9" and norm_cat != "ai":
             if scene.image_url and not scenes[1].image_url:
                 scenes[1].image_url = scene.image_url
             continue
 
         img_dest = output_dir / f"scene_{scene.scene_index:03d}.jpg"
         acquired = False
+
+        # Category: AI — Strictly 100% AI-rendered illustrations (skip real article photos & Wikimedia).
+        # Never use fallback cards; fail the run immediately if all online AI rendering methods fail.
+        if norm_cat == "ai":
+            base_prompt = ground_prompt_to_core_subject(
+                prompt=scene.ai_prompt,
+                fallback_headline=scene.entity_query or scene.text,
+                category=norm_cat,
+            )
+            angle_suffix = ai_camera_angles[idx % len(ai_camera_angles)]
+            prompt_to_use = f"{base_prompt}, {angle_suffix}"
+            logger.info("Rendering mandatory online AI illustration for AI scene %d: %s", idx, prompt_to_use[:90])
+
+            try:
+                generated_path = generate_scene_image(
+                    prompt=prompt_to_use,
+                    destination_path=img_dest,
+                    aspect_ratio=aspect_ratio,
+                    style="cinematic",
+                    use_cache=False,
+                    allow_free_online=True,
+                )
+                gen_p = Path(generated_path).resolve()
+                if not gen_p.is_file() or gen_p.stat().st_size < 5000:
+                    raise RuntimeError(f"File ảnh AI chưa được tạo hoặc kích thước không hợp lệ ({gen_p})")
+                if is_image_mostly_blank(gen_p):
+                    raise RuntimeError(f"Ảnh AI render bị tối đen hoặc rỗng ({gen_p})")
+                scene.image_path = str(gen_p)
+                scene.image_source_type = "ai_generated"
+                acquired = True
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Bản tin AI thất bại: Không thể render hình AI minh họa online cho phân cảnh {idx + 1}/{total} ({exc}). "
+                    "Hệ thống hủy lần đăng này theo quy tắc không dùng ảnh thật / ảnh fallback cho tin AI."
+                ) from exc
+            continue
 
         # Category: Viral (Authentic real article photo OR tailored photorealistic AI generation)
         if category == "viral":
@@ -4663,7 +4756,7 @@ def prepare_scene_illustrations(
             scene.image_source_type = source_type
             acquired = True
 
-        # Category: World / Tech / Sports / Hope / AI (Direct Article Photo -> Wikimedia -> AI Cinematic)
+        # Category: World / Tech / Sports / Hope (Direct Article Photo -> Wikimedia -> AI Cinematic)
         if not acquired and prefer_real_images and scene.image_url and not is_placeholder_image_url(scene.image_url):
             # Reuse already-downloaded photo if an earlier scene in this run fetched the exact same image_url
             already_fetched = next(
@@ -4741,6 +4834,22 @@ def prepare_scene_illustrations(
             card.save(img_dest, quality=90)
             scene.image_path = str(img_dest.resolve())
             scene.image_source_type = "custom"
+
+    # Final strict verification for AI category: every scene must have a completed, non-blank AI-rendered image
+    if norm_cat == "ai":
+        for sc in scenes:
+            p = Path(sc.image_path) if sc.image_path else None
+            if (
+                not p
+                or not p.is_file()
+                or p.stat().st_size < 5000
+                or sc.image_source_type != "ai_generated"
+                or is_image_mostly_blank(p)
+            ):
+                raise RuntimeError(
+                    f"Kiểm tra ảnh AI thất bại ở phân cảnh {sc.scene_index}: ảnh chưa được render hoàn chỉnh hoặc là ảnh fallback."
+                )
+        return
 
     # Never leave any scene (especially Scene 2 Outro/CTA in Shorts or Outro in 16:9) with a blank dark screen
     # if at least one scene in the video acquired a valid, non-blank visual.
