@@ -48,8 +48,14 @@ LEGACY_TASK_NAMES = {
 
 DEFAULT_SCHEDULE_TIMES = {
     "tin_moi": "06:00",
-    "hope": "12:00",
-    "ai": "17:30",
+    "hope": "12:03",
+    "ai": "12:03",
+}
+
+DEFAULT_SCHEDULE_DAYS = {
+    "tin_moi": None,           # DAILY
+    "hope": "MON,WED,FRI",     # Thứ 2, 4, 6
+    "ai": "TUE,THU",           # Thứ 3, 5
 }
 
 
@@ -150,26 +156,41 @@ def create_task(
     }
     label = cat_labels.get(category, category)
 
+    weekly_days = DEFAULT_SCHEDULE_DAYS.get(cat_norm)
+    freq_label = f"{time_str} ({weekly_days})" if weekly_days else f"{time_str} mỗi ngày"
+
     print("=" * 70)
     print(f"  HAIZFLOW - THIẾT LẬP LỊCH TỰ ĐỘNG LÀM VIDEO: {label.upper()}")
     print("=" * 70)
     print(f" - Tên tác vụ : {task_name}")
     print(f" - Chủ đề     : {category}")
-    print(f" - Thời gian  : {time_str} mỗi ngày")
+    print(f" - Thời gian  : {freq_label}")
     print(f" - Lệnh chạy  : {task_run_cmd}")
     print(f" - Wake PC    : {'BẬT (Đánh thức khi máy Sleep)' if wake_up else 'TẮT'}")
     print(" - Cơ chế     : Tự động chạy ngầm dưới nền Windows (không cần mở app HaizFlow)")
     print("=" * 70)
 
-    cmd = [
-        "schtasks",
-        "/Create",
-        "/SC", "DAILY",
-        "/TN", task_name,
-        "/TR", task_run_cmd,
-        "/ST", time_str,
-        "/F",
-    ]
+    if weekly_days:
+        cmd = [
+            "schtasks",
+            "/Create",
+            "/SC", "WEEKLY",
+            "/D", weekly_days,
+            "/TN", task_name,
+            "/TR", task_run_cmd,
+            "/ST", time_str,
+            "/F",
+        ]
+    else:
+        cmd = [
+            "schtasks",
+            "/Create",
+            "/SC", "DAILY",
+            "/TN", task_name,
+            "/TR", task_run_cmd,
+            "/ST", time_str,
+            "/F",
+        ]
     res = subprocess.run(
         cmd,
         capture_output=True,

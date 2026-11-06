@@ -270,6 +270,53 @@ class TinMoiChapterTests(unittest.TestCase):
         pentagon_deadline = next(it for it in clustered if "deadline" in it.title.lower())
         self.assertEqual(pentagon_deadline.image_url, "")
 
+    def test_enrich_topic_with_related_articles_and_deep_30_to_60s_format(self):
+        from haizflow.services.daily_news import enrich_topic_with_related_articles
+
+        primary = WorldNewsItem(
+            title="Targeted mRNA immunotherapy achieves 90 percent remission in pediatric leukemia patients",
+            summary="Oncologists reported a Phase 3 clinical trial where tailored cell therapy eliminated leukemia.",
+            source="ScienceDaily Health",
+            published="Today",
+            link="https://sciencedaily.com/leukemia-primary",
+            full_text="Oncologists reported a Phase 3 clinical trial where tailored cell therapy eliminated leukemia in 90 percent of patients.",
+        )
+        candidates = [
+            primary,
+            WorldNewsItem(
+                title="Hospital network expands pediatric leukemia mRNA immunotherapy clinical trial across Europe",
+                summary="Twelve children's hospitals confirmed long-term remission durability and minimal side effects.",
+                source="Good News Network",
+                published="Today",
+                link="https://goodnewsnetwork.org/leukemia-related",
+            ),
+        ]
+
+        with (
+            patch(
+                "haizflow.services.daily_news.fetch_article_details_and_image",
+                return_value=(
+                    "Twelve children's hospitals confirmed long-term remission durability and minimal side effects over 24 months of follow-up.",
+                    "",
+                ),
+            ),
+            patch("haizflow.services.daily_news.get_wikipedia_context", return_value="Immunotherapy activates the immune system to target malignant cells."),
+            patch("urllib.request.urlopen", side_effect=OSError("offline test")),
+        ):
+            enrich_topic_with_related_articles(primary, candidates, category="hope")
+
+        self.assertIn("[NỘI DUNG BÀI BÁO CHÍNH", primary.full_text)
+        self.assertIn("[BÀI BÁO LIÊN QUAN", primary.full_text)
+        self.assertIn("[KIẾN THỨC NỀN", primary.full_text)
+
+        # Verify offline fallback for single-topic hope & ai produces 4 scenes and >= 90 words (~30-60s)
+        for cat in ("hope", "ai"):
+            digest = fallback_offline_news_script([primary], max_topics=1, category=cat)
+            self.assertEqual(len(digest.scenes), 4)
+            total_words = sum(len(sc.text.split()) for sc in digest.scenes)
+            self.assertGreaterEqual(total_words, 85)
+            self.assertLessEqual(total_words, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

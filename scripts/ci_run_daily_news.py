@@ -175,30 +175,30 @@ def rollback_last_batch_for_category(category: str) -> int:
         return 0
 
 def resolve_category_from_utc() -> tuple[str, str, int]:
-    """Auto-detect category, aspect ratio, and topic count from current UTC time.
+    """Auto-detect category, aspect ratio, and topic count from current UTC/VN time.
 
-    Fixed daily schedule (1 Broadcast 16:9 + 2 Shorts 9:16, pre-shifted 3h earlier for GitHub queue):
-      - tin_moi: 20:03 UTC (03:03 VN, target ~06:00 VN) -> 16:9 (9 topics)
-      - hope:    02:03 UTC (09:03 VN, target ~12:00 VN) -> 9:16 (1 topic)
-      - ai:      07:33 UTC (14:33 VN, target ~17:30 VN) -> 9:16 (1 topic)
+    Fixed schedule (pre-shifted 3h earlier for GitHub queue):
+      - tin_moi: 20:03 UTC (03:03 VN, target ~06:00 VN daily) -> 16:9 (9 topics)
+      - hope:    02:03 UTC (09:03 VN, target ~12:03 VN Mon/Wed/Fri - Thứ 2, 4, 6) -> 9:16 (1 deep topic, 30-60s)
+      - ai:      02:03 UTC (09:03 VN, target ~12:03 VN Tue/Thu - Thứ 3, 5) -> 9:16 (1 deep topic, 30-60s)
     """
     now_utc = datetime.now(timezone.utc)
+    now_vn = datetime.now(VN_TZ)
     hour = now_utc.hour
     minute = now_utc.minute
     total_minutes = hour * 60 + minute
+    vn_weekday = now_vn.weekday()  # 0=Mon(T2), 1=Tue(T3), 2=Wed(T4), 3=Thu(T5), 4=Fri(T6), 5=Sat(T7), 6=Sun(CN)
 
-    logger.info("Current UTC time: %02d:%02d (Hour %d)", hour, minute, hour)
+    logger.info("Current UTC time: %02d:%02d | VN weekday: %d", hour, minute, vn_weekday)
 
     # 1. Bản tin Tin Nóng (tin_moi): 19:00 - 01:30 UTC (02:00 - 08:30 VN) -> 9 tin 16:9
     if total_minutes >= 19 * 60 or total_minutes < 90:
         return "tin_moi", "16:9", 9
 
-    # 2. Short Tin Vui (hope): 01:30 - 07:00 UTC (08:30 - 14:00 VN) -> 1 tin vui <= 25s (9:16)
-    if 90 <= total_minutes < 7 * 60:
-        return "hope", "9:16", 1
-
-    # 3. Short Tin AI (ai): 07:00 - 19:00 UTC (14:00 - 02:00 VN) -> 1 tin AI đột phá <= 25s (9:16)
-    return "ai", "9:16", 1
+    # 2. Khung 12:03 VN: Thứ 3, Thứ 5 (weekday 1, 3) chạy Tin AI; Thứ 2, 4, 6 (hoặc mặc định) chạy Tin Hope
+    if vn_weekday in (1, 3):
+        return "ai", "9:16", 1
+    return "hope", "9:16", 1
 
 
 def setup_ci_environment() -> None:
