@@ -3,9 +3,13 @@
 import json
 import re
 import sys
-import tomllib
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python < 3.11 (e.g. macOS system python3)
+    tomllib = None  # type: ignore[assignment]
 
 
 def _application_version() -> str:
@@ -28,7 +32,12 @@ def _application_version() -> str:
     # editable installation is present in the interpreter.
     pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
     if not getattr(sys, "frozen", False) and pyproject.is_file():
-        return tomllib.loads(pyproject.read_text(encoding="utf-8"))["project"]["version"]
+        pyproject_text = pyproject.read_text(encoding="utf-8")
+        if tomllib is not None:
+            return tomllib.loads(pyproject_text)["project"]["version"]
+        match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', pyproject_text)
+        if match:
+            return match.group(1)
     try:
         return version("haizflow")
     except PackageNotFoundError:

@@ -10,8 +10,11 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 from pathlib import Path
+
+_ORIGINAL_HOME = os.environ.get("HOME", "")
 
 # Reconfigure UTF-8 encoding for Windows console
 if sys.stdout and hasattr(sys.stdout, "reconfigure"):
@@ -31,6 +34,23 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from haizflow.config import RUNTIME_DATA_DIR
 from haizflow.services import youtube_direct
+
+if sys.platform != "win32" and _ORIGINAL_HOME:
+    os.environ["HOME"] = _ORIGINAL_HOME
+
+
+def _resolve_user_path(raw: str) -> str:
+    cleaned = raw.strip().strip('"\'')
+    if not cleaned:
+        return ""
+    candidate = Path(cleaned).expanduser()
+    if candidate.is_file():
+        return str(candidate)
+    # macOS Terminal escapes spaces with backslashes when dragging files into input()
+    unescaped = Path(cleaned.replace("\\ ", " ")).expanduser()
+    if unescaped.is_file():
+        return str(unescaped)
+    return str(candidate)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("setup_youtube_auth")
@@ -69,16 +89,20 @@ def main() -> int:
 
     # 1. Resolve client credentials
     if args.client_secret_file:
-        c_id, c_secret = youtube_direct.import_client_secret_file(args.client_secret_file)
+        c_id, c_secret = youtube_direct.import_client_secret_file(_resolve_user_path(args.client_secret_file))
     elif args.client_id and args.client_secret:
         c_id, c_secret = args.client_id.strip(), args.client_secret.strip()
         youtube_direct.save_client_credentials(c_id, c_secret)
     else:
         c_id, c_secret = youtube_direct.get_client_credentials()
         if not c_id or not c_secret:
-            print("\n👉 Bạn chưa có Client ID và Client Secret từ Google Cloud.")
-            print("   Vui lòng nhập Client ID và Client Secret (hoặc kéo thả file client_secret.json):")
-            input_file = input("   Đường dẫn tệp client_secret.json (bấm Enter để nhập thủ công): ").strip().strip('"\'')
+            print("\n👉 Bạn chưa có Client ID và Client Secret trên máy.")
+            print("   Cách lấy trên Google Cloud Console:")
+            print("   1. Mở trang OAuth Client:")
+            print("      https://console.cloud.google.com/auth/clients/704435039379-10u7391buoqbdlqqoh6bbe9hf2ahcl0n.apps.googleusercontent.com?project=vigilant-shell-512204-r9")
+            print("   2. Tại mục 'Client secrets' (chỉ tối đa 2 secret): nếu đã đủ 2 secret thì xoá 1 secret cũ -> bấm '+ Add secret' -> bấm 'Download JSON'.")
+            print("   Vui lòng kéo-thả file client_secret.json vào đây (hoặc bấm Enter để nhập thủ công):")
+            input_file = _resolve_user_path(input("   Đường dẫn tệp client_secret.json (bấm Enter để nhập thủ công): "))
             if input_file and Path(input_file).is_file():
                 c_id, c_secret = youtube_direct.import_client_secret_file(input_file)
             else:

@@ -188,6 +188,17 @@ def refresh_access_token(refresh_token: str, client_id: str, client_secret: str)
             data["obtained_at"] = time.time()
             save_token(data)
             return data
+    except urllib.error.HTTPError as err:
+        detail = ""
+        try:
+            err_raw = err.read().decode("utf-8", errors="ignore")
+            err_json = json.loads(err_raw)
+            err_code = err_json.get("error", "")
+            err_desc = err_json.get("error_description", "")
+            detail = f" [{err_code}: {err_desc}]" if (err_code or err_desc) else (f" [{err_raw[:200]}]" if err_raw else "")
+        except Exception:
+            pass
+        raise YouTubeAuthError(f"Không thể làm mới token Google: {err}{detail}") from err
     except Exception as exc:
         raise YouTubeAuthError(f"Không thể làm mới token Google: {exc}") from exc
 

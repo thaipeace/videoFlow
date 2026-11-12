@@ -41,12 +41,13 @@ Nếu bạn chưa có tệp `client_secret.json` hoặc cần lấy lại từ t
    * Bấm **Save and continue**.
 
 > [!IMPORTANT]
-> ### 💡 Bí quyết để Token DÙNG VĨNH VIỄN (Không bị hết hạn sau 7 ngày)
-> Mặc định, Google để trạng thái ứng dụng là **Testing**. Ở chế độ này, mọi Refresh Token sẽ **tự động bị thu hồi sau đúng 7 ngày** (gây ra lỗi `invalid_grant` khi chạy trên CI).
-> * Để khắc phục, tại trang **OAuth consent screen**, nhìn mục **Publishing status**:
-> * Bấm nút **"PUBLISH APP" (Công bố ứng dụng)** $\rightarrow$ Chọn **Confirm**.
-> * *(Dù Google có hiển thị cảnh báo "Needs verification", bạn cứ an tâm bỏ qua vì ứng dụng này là cho cá nhân bạn tự sử dụng)*.
-> * Sau khi chuyển sang **In production**, token sẽ **dùng vĩnh viễn** mà không bao giờ bị hết hạn định kỳ.
+> ### 💡 Lưu ý về thời hạn Token (7 ngày) & Giới hạn 2 Client Secrets
+> 1. **Vì sao Token hết hạn sau 7 ngày**: Việc bấm *Publish App* trên Google Cloud yêu cầu phải xác minh tên miền (domain name), nên ứng dụng được giữ ở chế độ **Testing**. Ở chế độ này, Refresh Token có hiệu lực **7 ngày**.
+> 2. **Cách lấy lại Client Secret khi cần cấp mới**:
+>    * Mở trực tiếp trang OAuth Client của dự án:
+>      👉 **[https://console.cloud.google.com/auth/clients/704435039379-10u7391buoqbdlqqoh6bbe9hf2ahcl0n.apps.googleusercontent.com?project=vigilant-shell-512204-r9](https://console.cloud.google.com/auth/clients/704435039379-10u7391buoqbdlqqoh6bbe9hf2ahcl0n.apps.googleusercontent.com?project=vigilant-shell-512204-r9)**
+>    * Tại mục **Client secrets**, Google chỉ cho phép **tối đa 2 secret** cùng lúc (và ẩn mã secret cũ sau khi tạo). Do đó, nếu đã có đủ 2 secret, bạn cần **xoá 1 secret cũ (🗑️)** $\rightarrow$ bấm **+ Add secret** $\rightarrow$ bấm **Download JSON (⬇️)** (hoặc copy chuỗi `GOCSPX-...` mới) để lấy lại.
+>    * *(Mẹo: Sau lần chạy đầu tiên trên máy, file `runtime/data/youtube_client_secret.json` đã được lưu sẵn trên máy tính. Những lần hết hạn 7 ngày tiếp theo trên cùng máy đó, bạn không cần tạo lại secret trên Google Cloud nữa mà chỉ cần chạy `python3 scripts/setup_youtube_auth.py` để đăng nhập lại).*
 
 ### Bước 2.3: Tạo và Tải về OAuth Client ID
 1. Vào **APIs & Services** $\rightarrow$ **Credentials** (Thông tin xác thực).
@@ -133,12 +134,12 @@ Ngay sau khi đăng nhập thành công, script sẽ tự động in sẵn **2 k
 
 ## 6. Xử Lý Các Sự Cố Thường Gặp (Troubleshooting)
 
-### 1. Lỗi `invalid_grant` (Token has been expired or revoked)
-* **Nguyên nhân**: OAuth App trên Google Cloud vẫn đang ở chế độ **Testing**, làm token hết hạn sau 7 ngày; hoặc bạn vừa đổi mật khẩu tài khoản Google.
+### 1. Lỗi `invalid_grant` / `HTTP Error 400: Bad Request` (Token has been expired or revoked)
+* **Nguyên nhân**: OAuth App trên Google Cloud ở chế độ **Testing** (do Publish App yêu cầu domain name), làm token tự động hết hạn sau **7 ngày**; hoặc bạn vừa đổi mật khẩu tài khoản Google.
 * **Cách khắc phục**:
-  1. Vào [OAuth consent screen](https://console.cloud.google.com/apis/credentials/consent) và bấm **PUBLISH APP** để chuyển sang **In production**.
-  2. Chạy lại `python scripts/setup_youtube_auth.py` trên máy để lấy token mới.
-  3. Cập nhật lại giá trị mới vào Secret `YOUTUBE_TOKEN_JSON` trên GitHub.
+  1. Nếu chưa có sẵn `runtime/data/youtube_client_secret.json` trên máy: Mở [trang OAuth Client của dự án](https://console.cloud.google.com/auth/clients/704435039379-10u7391buoqbdlqqoh6bbe9hf2ahcl0n.apps.googleusercontent.com?project=vigilant-shell-512204-r9) $\rightarrow$ tại mục **Client secrets** (tối đa 2 secret), **xoá 1 secret cũ (🗑️)** $\rightarrow$ bấm **+ Add secret** $\rightarrow$ bấm **Download JSON (⬇️)**.
+  2. Chạy `python3 scripts/setup_youtube_auth.py` (macOS/Linux) hoặc `python scripts/setup_youtube_auth.py` (Windows) trên máy để lấy token mới.
+  3. Cập nhật lại `YOUTUBE_TOKEN_JSON` (và `YOUTUBE_CLIENT_SECRET_JSON` nếu vừa tạo secret mới) trên [GitHub Actions Secrets](https://github.com/thaipeace/videoFlow/settings/secrets/actions).
 
 ### 2. Video đã upload thành công nhưng không thấy trên trang chủ kênh
 * **Nguyên nhân**: Dự án Google Cloud chưa được xác minh thương mại nên YouTube tự động gắn cờ video ở chế độ **Private (Riêng tư)** để kiểm duyệt.

@@ -435,14 +435,45 @@ def main() -> int:
                     if manifest_data.get("youtube_playlist_title"):
                         summary_lines.append(f"- 📺 **Playlist**: {manifest_data.get('youtube_playlist_title')}")
                 else:
+                    gh_repo = os.environ.get("GITHUB_REPOSITORY", "thaipeace/videoFlow").strip() or "thaipeace/videoFlow"
+                    secrets_url = f"https://github.com/{gh_repo}/settings/secrets/actions"
+                    guide_url = f"https://github.com/{gh_repo}/blob/main/docs/extras/youtube-oauth-setup-guide.vi.md"
+                    gcp_client_url = (
+                        "https://console.cloud.google.com/auth/clients/"
+                        "704435039379-10u7391buoqbdlqqoh6bbe9hf2ahcl0n.apps.googleusercontent.com"
+                        "?project=vigilant-shell-512204-r9"
+                    )
                     summary_lines.extend([
                         "### ❌ Xuất Bản YouTube: KHÔNG THÀNH CÔNG",
                         f"- ⚠️ **Lý do**: {yt_error or 'Không tìm thấy OAuth Token hoặc xác thực bị lỗi'}",
+                        "- ℹ️ **Nguyên nhân**: Do Google yêu cầu domain name để Publish App nên OAuth App đang ở chế độ **Testing** (token tự động hết hạn sau **7 ngày** và cần cấp lại định kỳ).",
                         "",
-                        "**Hướng dẫn khắc phục:**",
-                        "1. Vào **Settings** > **Secrets and variables** > **Actions** trên GitHub.",
-                        "2. Đảm bảo đã thiết lập đủ 2 secrets: `YOUTUBE_TOKEN_JSON` và `YOUTUBE_CLIENT_SECRET_JSON`.",
-                        "3. Nếu token đã quá 7 ngày (Google OAuth App ở chế độ 'Testing'), chạy `python scripts/setup_youtube_auth.py` trên máy tính để cấp lại token mới và cập nhật vào Secret.",
+                        "#### 🛠️ Hướng dẫn lấy lại Token & khắc phục từ đầu (3 bước):",
+                        "",
+                        "**Bước 1: Lấy `Client secret` / `client_secret.json` trên Google Cloud Console**",
+                        f"1. Mở trực tiếp trang OAuth Client của dự án: 👉 **[{gcp_client_url}]({gcp_client_url})**",
+                        "2. Tại mục **Client secrets**:",
+                        "   - Google chỉ cho phép **tối đa 2 secret** cùng lúc và ẩn mã secret cũ sau khi tạo.",
+                        "   - Do đó, nếu đã đủ 2 secret, hãy **xoá 1 secret cũ (bấm biểu tượng thùng rác 🗑️)** → bấm **+ Add secret** để tạo secret mới.",
+                        "   - Bấm biểu tượng **Download JSON (⬇️)** để tải file `client_secret_xxxx.json` về máy (hoặc copy trực tiếp chuỗi `Client secret` mới dạng `GOCSPX-...`).",
+                        "   - *(Lưu ý: Nếu trên máy tính của bạn vẫn còn lưu sẵn `runtime/data/youtube_client_secret.json` từ lần chạy trước và bạn không xoá secret đó trên Google Cloud, bạn có thể bỏ qua Bước 1 và chạy thẳng Bước 2)*.",
+                        "",
+                        "**Bước 2: Chạy script trên máy tính để đăng nhập & sinh Token mới**",
+                        "1. Mở Terminal (macOS/Linux) hoặc PowerShell (Windows) tại thư mục dự án `videoFlow` và chạy:",
+                        "   - Trên **macOS / Linux**: `python3 scripts/setup_youtube_auth.py`",
+                        "   - Trên **Windows**: `python scripts/setup_youtube_auth.py`",
+                        "   - *(Hoặc truyền trực tiếp file: `python3 scripts/setup_youtube_auth.py --client-secret-file ~/Downloads/client_secret_xxxx.json`)*",
+                        "   - *(Hoặc truyền trực tiếp secret: `python3 scripts/setup_youtube_auth.py --client-id \"704435039379-10u7391buoqbdlqqoh6bbe9hf2ahcl0n.apps.googleusercontent.com\" --client-secret \"GOCSPX-...\"`)*",
+                        "2. Nếu được hỏi file, kéo-thả file `client_secret_xxxx.json` vừa tải vào cửa sổ Terminal rồi bấm **Enter**.",
+                        "3. Trình duyệt sẽ tự mở trang đăng nhập Google: chọn đúng tài khoản Google sở hữu kênh YouTube → nếu hiện cảnh báo *\"Google hasn't verified this app\"*, bấm **Advanced (Nâng cao)** → **Go to ... (unsafe)** → **Continue (Tiếp tục)**.",
+                        "4. Quay lại Terminal: script sẽ tự động in ra **2 khối JSON** cho `YOUTUBE_TOKEN_JSON` và `YOUTUBE_CLIENT_SECRET_JSON` (đồng thời lưu tại `runtime/data/youtube_token.json` và `runtime/data/youtube_client_secret.json`).",
+                        "",
+                        "**Bước 3: Cập nhật 2 Secrets lên GitHub Actions**",
+                        f"1. Mở trang cấu hình Secrets của repo: 👉 **[{secrets_url}]({secrets_url})**",
+                        "2. Bấm biểu tượng chỉnh sửa (✏️) hoặc **New repository secret** để cập nhật đủ 2 khóa:",
+                        "   - **`YOUTUBE_TOKEN_JSON`**: Dán toàn bộ khối JSON thứ nhất từ Terminal vào.",
+                        "   - **`YOUTUBE_CLIENT_SECRET_JSON`**: Dán toàn bộ khối JSON thứ hai từ Terminal vào.",
+                        f"3. 📖 Xem tài liệu hướng dẫn chi tiết tại: [`docs/extras/youtube-oauth-setup-guide.vi.md`]({guide_url})",
                     ])
             else:
                 summary_lines.append("ℹ️ *Chế độ không đăng tải YouTube (--no-youtube) được kích hoạt.*")

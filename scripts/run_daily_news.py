@@ -383,7 +383,10 @@ def main() -> int:
                     logger.warning("==================================================================")
                     logger.warning("⚠️  CẢNH BÁO: KHÔNG THỂ ĐĂNG LÊN YOUTUBE!")
                     logger.warning("   Lý do: Chưa có OAuth Token (không tìm thấy youtube_token.json hoặc secret YOUTUBE_TOKEN_JSON).")
-                    logger.warning("   -> Vui lòng kiểm tra Secret 'YOUTUBE_TOKEN_JSON' trên GitHub Repository Settings.")
+                    logger.warning("   -> Bước 1: Mở https://console.cloud.google.com/auth/clients/704435039379-10u7391buoqbdlqqoh6bbe9hf2ahcl0n.apps.googleusercontent.com?project=vigilant-shell-512204-r9")
+                    logger.warning("              Ở mục 'Client secrets' (chỉ cho tối đa 2 secret): xoá 1 secret cũ -> bấm '+ Add secret' -> Download JSON.")
+                    logger.warning("   -> Bước 2: Chạy `python3 scripts/setup_youtube_auth.py` (macOS/Linux) hoặc `python scripts/setup_youtube_auth.py` (Windows).")
+                    logger.warning("   -> Bước 3: Copy 2 khối JSON in trên màn hình dán vào GitHub Secrets: YOUTUBE_TOKEN_JSON và YOUTUBE_CLIENT_SECRET_JSON.")
                     logger.warning("==================================================================")
                     manifest["youtube_published"] = False
                     manifest["youtube_error"] = "Chưa kết nối tài khoản Google YouTube (thiếu YOUTUBE_TOKEN_JSON)."
@@ -391,9 +394,12 @@ def main() -> int:
             except Exception as yt_err:
                 logger.error("==================================================================")
                 logger.error("❌  ĐĂNG TẢI YOUTUBE THẤT BẠI: %s", yt_err)
-                logger.error("   -> Nếu lỗi 'invalid_grant' hoặc 'Token has been expired or revoked':")
-                logger.error("      OAuth Token của Google đã hết hạn (đặc biệt khi Google App ở chế độ 'Testing').")
-                logger.error("      Cần tạo lại token mới và cập nhật vào GitHub Secret 'YOUTUBE_TOKEN_JSON'.")
+                logger.error("   -> Hướng dẫn lấy lại Token từ đầu (App ở chế độ Testing, hết hạn sau 7 ngày do Publish App cần domain):")
+                logger.error("      1. Mở trang OAuth Client: https://console.cloud.google.com/auth/clients/704435039379-10u7391buoqbdlqqoh6bbe9hf2ahcl0n.apps.googleusercontent.com?project=vigilant-shell-512204-r9")
+                logger.error("         Tại mục 'Client secrets' (chỉ cho phép tối đa 2 secret): xoá 1 secret cũ -> bấm '+ Add secret' -> bấm 'Download JSON'.")
+                logger.error("      2. Trên máy tính, chạy: `python3 scripts/setup_youtube_auth.py` (macOS/Linux) hoặc `python scripts/setup_youtube_auth.py` (Windows).")
+                logger.error("      3. Cập nhật 2 khối JSON mới vào GitHub Actions Secrets: YOUTUBE_TOKEN_JSON và YOUTUBE_CLIENT_SECRET_JSON.")
+                logger.error("         Link Secrets: https://github.com/thaipeace/videoFlow/settings/secrets/actions")
                 logger.error("==================================================================")
                 manifest["youtube_published"] = False
                 manifest["youtube_error"] = str(yt_err)
