@@ -457,7 +457,7 @@ CATEGORY_CONFIG: dict[str, dict] = {
             "  + THỨ YẾU (SÁNG CHẾ & CÔNG NGHỆ KHÁC): Các phát minh năng lượng, vật liệu mới, robot hỗ trợ, khoa học vũ trụ (chỉ dùng với trọng số nhỏ hơn khi cần thiết).\n"
             "- Giọng điệu ấm áp, hào hứng, tích cực, truyền tải niềm tin và hy vọng mãnh liệt nhưng có chiều sâu khoa học và thực tiễn vững chắc cho người nghe.\n"
             "- Nhấn mạnh vào giá trị nhân văn và tác động thực tế: tổng hợp thông tin từ bài báo chính và các bài báo liên quan để giải thích rõ cơ chế, số liệu lâm sàng/thực địa và ý nghĩa cứu sống bệnh nhân, hồi sinh thiên nhiên.\n"
-            "- Chuẩn YouTube Shorts chuyên sâu (30 đến 60 giây, 4 phân cảnh, tổng 115 - 155 từ): đào sâu nội dung từ đa nguồn, tuyệt đối không nói hời hợt.\n"
+            "- Chuẩn YouTube Shorts chuyên sâu (thời lượng linh hoạt tối đa 40 giây, không nhất thiết lúc nào cũng phải đủ 40 giây; 4 phân cảnh, tổng 75 - 105 từ): đào sâu nội dung từ đa nguồn, có kết thúc ngắn gọn và nhắc đăng ký kênh.\n"
             "- Cuối tiêu đề video BẮT BUỘC có hashtag #Shorts."
         ),
         "outro_topic_name": "tin vui, y khoa, sự sống và môi trường",
@@ -481,11 +481,11 @@ CATEGORY_CONFIG: dict[str, dict] = {
             "Chuyên mục tập trung tuyển chọn ĐÚNG 1 BƯỚC ĐỘT PHÁ AI NỔI BẬT NHẤT trong ngày và ĐÀO SÂU ĐA CHIỀU từ bài báo chính kết hợp các bài báo liên quan để mang đến một bản tin thật sự chất lượng, thật sự xác thực và thật sự sát sườn với đời sống, công việc của người xem.\n"
             "PHONG CÁCH VÀ YÊU CẦU BIÊN TẬP:\n"
             "- LUẬT TỐI THƯỢNG BẤT KHẢ XÂM PHẠM: TUYỆT ĐỐI 100% KHÔNG ĐƯỢC ĐƯA BẤT KỲ TIN TỨC NÀO LIÊN QUAN ĐẾN VIỆT NAM. Toàn bộ bản tin phải 100% là công nghệ quốc tế.\n"
-            "- Chuẩn YouTube Shorts chuyên sâu (THỜI LƯỢNG 30 ĐẾN 60 GIÂY, 4 PHÂN CẢNH, TỔNG 115 ĐẾN 155 TỪ):\n"
-            "  + Scene 0 (Hook trực diện, sát sườn): 16-22 từ, nêu ngay bước ngoặt AI mới và điểm chạm trực tiếp nhất tới công việc hoặc đời sống con người. KHÔNG chào hỏi.\n"
-            "  + Scene 1 (Bản chất công nghệ & Dữ kiện xác thực): 38-48 từ, giải thích rõ tập đoàn/phòng lab nào công bố, nguyên lý hoạt động và thông số kiểm chứng từ bài báo chính.\n"
-            "  + Scene 2 (Đào sâu từ các bài liên quan & Ứng dụng sát sườn cuộc sống): 40-50 từ, tổng hợp góc nhìn từ các bài báo liên quan để chỉ rõ công nghệ này giúp ích cụ thể gì cho công việc hàng ngày, chi phí tiếp cận và giới hạn thực tế.\n"
-            "  + Scene 3 (Đúc kết thực tế & CTA): 18-25 từ, đúc kết giá trị thực tiễn + Kêu gọi đăng ký kênh.\n"
+            "- Chuẩn YouTube Shorts chuyên sâu (THỜI LƯỢNG LINH HOẠT CAO NHẤT 40 GIÂY, không nhất thiết lúc nào cũng phải đủ 40 giây; 4 PHÂN CẢNH, TỔNG 75 ĐẾN 105 TỪ):\n"
+            "  + Scene 0 (Hook trực diện, sát sườn): 12-18 từ, nêu ngay bước ngoặt AI mới và điểm chạm trực tiếp nhất tới công việc hoặc đời sống con người. KHÔNG chào hỏi.\n"
+            "  + Scene 1 (Bản chất công nghệ & Dữ kiện xác thực): 25-35 từ, giải thích rõ tập đoàn/phòng lab nào công bố, nguyên lý hoạt động và thông số kiểm chứng từ bài báo chính.\n"
+            "  + Scene 2 (Đào sâu từ các bài liên quan & Ứng dụng sát sườn cuộc sống): 25-35 từ, tổng hợp góc nhìn từ các bài báo liên quan để chỉ rõ công nghệ này giúp ích cụ thể gì cho công việc hàng ngày, chi phí tiếp cận và giới hạn thực tế.\n"
+            "  + Scene 3 (Kết thúc ngắn gọn & Nhắc đăng ký kênh): 12-18 từ, 1 câu đúc kết ngắn gọn + 1 câu nhắc bấm đăng ký kênh.\n"
             "- Cuối tiêu đề video BẮT BUỘC có hashtag #Shorts."
         ),
         "outro_topic_name": "bước tiến đột phá trí tuệ nhân tạo",
@@ -3098,14 +3098,14 @@ def synthesize_news_script_with_gemini(
     if category in ("hope", "ai") and max_topics == 1:
         scenes_per_topic_desc = (
             "4 phân cảnh chuyên sâu, mạch lạc cho ĐÚNG 1 CHỦ ĐỀ TRỌNG TÂM DUY NHẤT "
-            "(Scene 0: Hook ấn tượng 16-22 từ; Scene 1: Bối cảnh & Nguyên lý/Bản chất cốt lõi từ bài báo chính 38-48 từ; "
-            "Scene 2: Đào sâu đa chiều từ các bài báo liên quan & Tác động thực tế sát sườn cuộc sống 40-50 từ; "
-            "Scene 3: Đúc kết sâu sắc & CTA 18-25 từ)"
+            "(Scene 0: Hook ấn tượng 12-18 từ; Scene 1: Bối cảnh & Nguyên lý/Bản chất cốt lõi từ bài báo chính 25-35 từ; "
+            "Scene 2: Đào sâu đa chiều từ các bài báo liên quan & Tác động thực tế sát sườn cuộc sống 25-35 từ; "
+            "Scene 3: Kết thúc ngắn gọn & nhắc đăng ký kênh 12-18 từ)"
         )
-        target_words = "khoảng 115 đến 155 từ tiếng Việt (BẮT BUỘC ĐẠT TỪ 110 ĐẾN 165 TỪ ĐỂ THỜI LƯỢNG ĐỌC ĐẠT TỪ 30 GIÂY ĐẾN 60 GIÂY)"
+        target_words = "khoảng 75 đến 105 từ tiếng Việt (THỜI LƯỢNG LINH HOẠT TÙY ĐỘ SÂU TIN TỨC, TỐI ĐA CAO NHẤT 40 GIÂY, KHÔNG NHẤT THIẾT LÚC NÀO CŨNG PHẢI ĐỦ 40 GIÂY)"
         min_scenes = 4
         max_scenes = 4
-        word_count_guideline = "Scene 0: 16-22 từ, Scene 1: 38-48 từ, Scene 2: 40-50 từ, Scene 3: 18-25 từ (TỔNG KỊCH BẢN TỪ 115 ĐẾN 155 TỪ TIẾNG VIỆT - ĐỘ DÀI 30S ĐẾN 60S)"
+        word_count_guideline = "Scene 0: 12-18 từ, Scene 1: 25-35 từ, Scene 2: 25-35 từ, Scene 3: 12-18 từ kết thúc ngắn gọn & nhắc đăng ký (TỔNG KỊCH BẢN 75 - 105 TỪ, CAO NHẤT 40 GIÂY)"
     elif category in ("viral", "hope", "ai"):
         if max_topics == 1:
             scenes_per_topic_desc = "3 phân cảnh mạch lạc cho ĐÚNG 1 CÂU CHUYỆN NỔI BẬT DUY NHẤT (Scene 0: Hook 10-12 từ; Scene 1: Diễn biến kịch tính hoặc đột phá 26-30 từ; Scene 2: Kết thúc bất ngờ/ý nghĩa & CTA ngắn 12-14 từ)"
@@ -3158,18 +3158,18 @@ def synthesize_news_script_with_gemini(
 """
     elif category == "ai":
         category_specific_rules = f"""
-ĐẶC THÙ BẮT BUỘC CHO SHORTS TIN AI CHUYÊN SÂU (ĐÚNG 1 CHỦ ĐỀ NỔI BẬT NHẤT - ĐỘ DÀI TỪ 30 ĐẾN 60 GIÂY):
+ĐẶC THÙ BẮT BUỘC CHO SHORTS TIN AI CHUYÊN SÂU (ĐÚNG 1 CHỦ ĐỀ NỔI BẬT NHẤT - THỜI LƯỢNG CAO NHẤT 40 GIÂY):
 - CHỌN ĐÚNG 1 SỰ KIỆN DUY NHẤT: Chọn bước đột phá Trí tuệ Nhân tạo (AI), mô hình ngôn ngữ lớn mới, siêu chip bán dẫn AI, robot hình người thông minh hoặc công cụ AI ấn tượng nhất trong danh sách.
 - ĐÀO SÂU ĐA NGUỒN, XÁC THỰC & SÁT SƯỜN VỚI CUỘC SỐNG (TUYỆT ĐỐI KHÔNG NÓI HỜI HỢT BỀ NỔI):
   + Bạn PHẢI khai thác và tổng hợp dữ kiện từ CẢ `[NỘI DUNG BÀI BÁO CHÍNH]` LẪN CÁC `[BÀI BÁO LIÊN QUAN]` và `[KIẾN THỨC NỀN]` được cung cấp trong hồ sơ sự kiện.
   + Không chỉ đọc lại tiêu đề hay tóm tắt qua loa; phải giải thích rõ nguyên lý cốt lõi, thông số xác thực và đặc biệt là Ý NGHĨA SÁT SƯỜN VỚI ĐỜI SỐNG & CÔNG VIỆC HÀNG NGÀY của người xem.
-- THỜI LƯỢNG & CẤU TRÚC NGHIÊM NGẶT (30 ĐẾN 60 GIÂY - TỔNG 115 ĐẾN 155 TỪ TIẾNG VIỆT):
-  + TỔNG TOÀN BỘ KỊCH BẢN TẤT CẢ PHÂN CẢNH TỪ 115 ĐẾN 155 TỪ TIẾNG VIỆT (ĐẢM BẢO THỜI LƯỢNG ĐỌC RƠI VÀO KHOẢNG 35 ĐẾN 55 GIÂY, NẰM TRONG KHUNG 30S - 60S).
+- THỜI LƯỢNG & CẤU TRÚC NGHIÊM NGẶT (CAO NHẤT 40 GIÂY - TỔNG 75 ĐẾN 105 TỪ TIẾNG VIỆT):
+  + TỔNG TOÀN BỘ KỊCH BẢN TẤT CẢ PHÂN CẢNH TỪ 75 ĐẾN 105 TỪ TIẾNG VIỆT (THỜI LƯỢNG ĐỌC LINH HOẠT TỪ 25 ĐẾN 38 GIÂY, CAO NHẤT 40 GIÂY, KHÔNG NHẤT THIẾT LÚC NÀO CŨNG PHẢI ĐỦ 40 GIÂY).
   + KỊCH BẢN GỒM ĐÚNG 4 PHÂN CẢNH (SCENE 0, 1, 2, 3):
-    * SCENE 0 (HOOK TRỰC DIỆN & SÁT SƯỜN): 16 - 22 từ. Nêu ngay bước ngoặt AI vừa diễn ra gắn liền với tác động trực tiếp nhất tới công việc, túi tiền hoặc cuộc sống hàng ngày của người xem. TUYỆT ĐỐI CẤM chào hỏi rườm rà.
-    * SCENE 1 (BẢN CHẤT CÔNG NGHỆ & DỮ KIỆN XÁC THỰC TỪ BÀI BÁO CHÍNH): 38 - 48 từ. Đào sâu vào cốt lõi: Tập đoàn/phòng lab nào công bố, cơ chế kỹ thuật/kiến trúc thực chất là gì, thông số kiểm chứng cụ thể ra sao và khác biệt gì so với thế hệ trước (không dùng mỹ từ sáo rỗng).
-    * SCENE 2 (TỔNG HỢP TỪ BÀI BÁO LIÊN QUAN & ỨNG DỤNG SÁT SƯỜN CUỘC SỐNG): 40 - 50 từ. Đối chiếu thông tin từ các bài báo liên quan để phân tích cụ thể: Công nghệ này giải quyết bài toán thực tế gì cho người dùng, nhân viên văn phòng, lập trình viên, bác sĩ, giáo viên hay doanh nghiệp trong đời sống hàng ngày? Chi phí tiếp cận hay giới hạn thực tế cần lưu ý là gì?
-    * SCENE 3 (ĐÚC KẾT GIÁ TRỊ THỰC & CTA): 18 - 25 từ. Đúc kết góc nhìn thực tế, sắc bén về bước tiến AI này + Kêu gọi đăng ký kênh ("Đăng ký kênh để nắm bắt những bước tiến AI sát sườn cuộc sống!").
+    * SCENE 0 (HOOK TRỰC DIỆN & SÁT SƯỜN): 12 - 18 từ. Nêu ngay bước ngoặt AI vừa diễn ra gắn liền với tác động trực tiếp nhất tới công việc, túi tiền hoặc cuộc sống hàng ngày của người xem. TUYỆT ĐỐI CẤM chào hỏi rườm rà.
+    * SCENE 1 (BẢN CHẤT CÔNG NGHỆ & DỮ KIỆN XÁC THỰC TỪ BÀI BÁO CHÍNH): 25 - 35 từ. Đào sâu vào cốt lõi: Tập đoàn/phòng lab nào công bố, cơ chế kỹ thuật/kiến trúc thực chất là gì, thông số kiểm chứng cụ thể ra sao và khác biệt gì so với thế hệ trước.
+    * SCENE 2 (TỔNG HỢP TỪ BÀI BÁO LIÊN QUAN & ỨNG DỤNG SÁT SƯỜN CUỘC SỐNG): 25 - 35 từ. Đối chiếu thông tin từ các bài báo liên quan để phân tích cụ thể: Công nghệ này giải quyết bài toán thực tế gì cho người dùng, nhân viên văn phòng, lập trình viên, bác sĩ, giáo viên hay doanh nghiệp trong đời sống hàng ngày?
+    * SCENE 3 (KẾT THÚC NGẮN GỌN & NHẮC ĐĂNG KÝ KÊNH - BẮT BUỘC): 12 - 18 từ. Gồm 1 câu đúc kết ngắn gọn + 1 câu nhắc đăng ký kênh rõ ràng ("Hãy bấm đăng ký kênh để cập nhật những bước tiến AI sát sườn cuộc sống!").
 - Tiêu đề: chỉ cần trả "hook_title" ở trên; hệ thống tự ghép đuôi " - {cfg.get('title_suffix_label', 'Đột Phá AI')} DD/MM/YYYY #Shorts".
 - TUYỆT ĐỐI CẤM đưa tin về Việt Nam. Chỉ đưa tin công nghệ quốc tế.
 - QUY TẮC CHO "entity_query" VÀ "ai_prompt": Mỗi phân cảnh (Scene 0, 1, 2, 3) phải có "ai_prompt" tiếng Anh cụ thể, mô tả một góc nhìn trực quan khác nhau của chủ thể công nghệ AI để hệ thống render 4 bức ảnh AI minh họa sinh động (ví dụ: 'OpenAI humanoid robot laboratory', 'Nvidia AI supercomputer server rack', 'doctor and engineer using AI holographic diagnostic interface'). Tránh từ ngữ trừu tượng.
@@ -3252,18 +3252,18 @@ def synthesize_news_script_with_gemini(
     elif category == "hope":
         if max_topics == 1:
             category_specific_rules = f"""
-ĐẶC THÙ BẮT BUỘC CHO SHORTS TIN VUI CHUYÊN SÂU (ĐÚNG 1 CHỦ ĐỀ NỔI BẬT NHẤT - ĐỘ DÀI TỪ 30 ĐẾN 60 GIÂY):
+ĐẶC THÙ BẮT BUỘC CHO SHORTS TIN VUI CHUYÊN SÂU (ĐÚNG 1 CHỦ ĐỀ NỔI BẬT NHẤT - THỜI LƯỢNG CAO NHẤT 40 GIÂY):
 - CHỌN ĐÚNG 1 SỰ KIỆN DUY NHẤT: Chọn bước đột phá y khoa, phép màu sự sống hoặc kỳ tích môi trường ấn tượng và truyền cảm hứng nhất trong danh sách.
 - ĐÀO SÂU ĐA NGUỒN, THẬT SỰ CHẤT LƯỢNG & THẬT SỰ HY VỌNG (TUYỆT ĐỐI KHÔNG NÓI HỜI HỢT BỀ NỔI):
   + Bạn PHẢI khai thác và tổng hợp dữ kiện từ CẢ `[NỘI DUNG BÀI BÁO CHÍNH]` LẪN CÁC `[BÀI BÁO LIÊN QUAN]` và `[KIẾN THỨC NỀN]` được cung cấp trong hồ sơ sự kiện.
   + Không chỉ báo tin vui chung chung; hãy giải thích rõ nguyên lý khoa học/y học, số liệu thử nghiệm lâm sàng hoặc thực địa cụ thể và tác động nhân văn sâu sắc để người nghe cảm nhận được niềm hy vọng có cơ sở thực tế vững chắc.
-- THỜI LƯỢNG & CẤU TRÚC NGHIÊM NGẶT (30 ĐẾN 60 GIÂY - TỔNG 115 ĐẾN 155 TỪ TIẾNG VIỆT):
-  + TỔNG TOÀN BỘ KỊCH BẢN TẤT CẢ PHÂN CẢNH TỪ 115 ĐẾN 155 TỪ TIẾNG VIỆT (ĐẢM BẢO THỜI LƯỢNG ĐỌC RƠI VÀO KHOẢNG 35 ĐẾN 55 GIÂY, NẰM TRONG KHUNG 30S - 60S).
+- THỜI LƯỢNG & CẤU TRÚC NGHIÊM NGẶT (CAO NHẤT 40 GIÂY - TỔNG 75 ĐẾN 105 TỪ TIẾNG VIỆT):
+  + TỔNG TOÀN BỘ KỊCH BẢN TẤT CẢ PHÂN CẢNH TỪ 75 ĐẾN 105 TỪ TIẾNG VIỆT (THỜI LƯỢNG ĐỌC LINH HOẠT TỪ 25 ĐẾN 38 GIÂY, CAO NHẤT 40 GIÂY, KHÔNG NHẤT THIẾT LÚC NÀO CŨNG PHẢI ĐỦ 40 GIÂY).
   + KỊCH BẢN GỒM ĐÚNG 4 PHÂN CẢNH (SCENE 0, 1, 2, 3):
-    * SCENE 0 (HOOK KHƠI GỢI HY VỌNG SÂU SẮC): 16 - 22 từ. Nêu ngay bước ngoặt y khoa, phép màu sự sống hoặc giải pháp môi trường cùng con số/kết quả đắt giá nhất. TUYỆT ĐỐI CẤM chào hỏi rườm rà.
-    * SCENE 1 (BỐI CẢNH & CƠ CHẾ ĐỘT PHÁ TỪ BÀI BÁO CHÍNH): 38 - 48 từ. Đào sâu giải thích căn bệnh/thách thức trước đây nan giải ra sao, viện nghiên cứu hay nhóm nhà khoa học nào đã tìm ra lời giải, và cơ chế hoạt động cụ thể của phương pháp này là gì.
-    * SCENE 2 (ĐỐI SÁNH CÁC BÀI BÁO LIÊN QUAN & TÁC ĐỘNG THỰC TẾ): 40 - 50 từ. Tổng hợp thêm dữ kiện từ các bài báo liên quan (kết quả thử nghiệm lâm sàng, tỷ lệ phục hồi, quy mô triển khai thực tế và lộ trình đến với bệnh nhân/cộng đồng) để mang lại niềm hy vọng chân thực, thuyết phục.
-    * SCENE 3 (ĐÚC KẾT TRUYỀN CẢM HỨNG & CTA): 18 - 25 từ. Đúc kết ý nghĩa nhân văn ấm áp vào tương lai + Kêu gọi đăng ký kênh ("Đăng ký kênh để đón nhận những tin vui chất lượng và nguồn năng lượng hy vọng!").
+    * SCENE 0 (HOOK KHƠI GỢI HY VỌNG SÂU SẮC): 12 - 18 từ. Nêu ngay bước ngoặt y khoa, phép màu sự sống hoặc giải pháp môi trường cùng con số/kết quả đắt giá nhất. TUYỆT ĐỐI CẤM chào hỏi rườm rà.
+    * SCENE 1 (BỐI CẢNH & CƠ CHẾ ĐỘT PHÁ TỪ BÀI BÁO CHÍNH): 25 - 35 từ. Đào sâu giải thích căn bệnh/thách thức trước đây nan giải ra sao, viện nghiên cứu hay nhóm nhà khoa học nào đã tìm ra lời giải, và cơ chế hoạt động cụ thể của phương pháp này là gì.
+    * SCENE 2 (ĐỐI SÁNH CÁC BÀI BÁO LIÊN QUAN & TÁC ĐỘNG THỰC TẾ): 25 - 35 từ. Tổng hợp thêm dữ kiện từ các bài báo liên quan (kết quả thử nghiệm lâm sàng, tỷ lệ phục hồi, quy mô triển khai thực tế và lộ trình đến với bệnh nhân/cộng đồng) để mang lại niềm hy vọng chân thực, thuyết phục.
+    * SCENE 3 (KẾT THÚC NGẮN GỌN & NHẮC ĐĂNG KÝ KÊNH - BẮT BUỘC): 12 - 18 từ. Gồm 1 câu đúc kết ngắn gọn ấm áp + 1 câu nhắc đăng ký kênh rõ ràng ("Đừng quên bấm đăng ký kênh để đón nhận những tin vui chất lượng!").
 - Tiêu đề: chỉ cần trả "hook_title" ở trên; hệ thống tự ghép đuôi " - {cfg.get('title_suffix_label', 'Tin Vui Thế Giới')} DD/MM/YYYY #Shorts".
 - TUYỆT ĐỐI CẤM đưa tin về Việt Nam. Chỉ đưa tin thế giới quốc tế.
 - QUY TẮC CHO "entity_query" VÀ "ai_prompt": Từ khóa tiếng Anh chuẩn xác về chủ thể y khoa/động vật/môi trường (ví dụ: 'cancer immunotherapy laboratory cells', 'coral reef restoration ocean divers', 'reforestation tree planting drones'). Tránh từ ngữ trừu tượng.
@@ -3524,14 +3524,12 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ với cấu trúc sau:
     if category == "viral" and max_topics == 1:
         if len(scenes) >= 2:
             scenes[1].text = _trim_to_complete_sentence(scenes[1].text, max_words=38)
-        if len(scenes) >= 3:
-            scenes[2].text = _trim_to_complete_sentence(scenes[2].text, max_words=20)
+        ensure_short_outro_with_subscribe_cta(scenes, category)
     elif category in ("hope", "ai") and max_topics == 1:
-        # Deep 30s-60s format (4 scenes, ~115-155 words total): preserve full multi-sentence depth
+        # Deep format up to 40s max (4 scenes, ~75-105 words total): preserve complete sentences + guarantee outro CTA
         for body_sc in scenes[1:-1]:
-            body_sc.text = _trim_to_complete_sentence(body_sc.text, max_words=60)
-        if len(scenes) >= 3:
-            scenes[-1].text = _trim_to_complete_sentence(scenes[-1].text, max_words=32)
+            body_sc.text = _trim_to_complete_sentence(body_sc.text, max_words=40)
+        ensure_short_outro_with_subscribe_cta(scenes, category)
 
     hook_title = str(parsed.get("hook_title") or "").strip()
     if not hook_title:
@@ -3918,6 +3916,78 @@ def _trim_to_complete_sentence(text: str, max_words: int = 38) -> str:
     return result
 
 
+def ensure_short_outro_with_subscribe_cta(scenes: List[DailyNewsScene], category: str) -> None:
+    """Guarantee that a Shorts broadcast ends with a concise conclusion AND a clear subscribe reminder.
+
+    Prevents:
+    1. Sentence trimming from accidentally dropping the second sentence ('Đăng ký kênh...') in the final scene.
+    2. LLM responses that omit the subscribe reminder or stop after the body scenes without a conclusion.
+    """
+    if not scenes:
+        return
+
+    norm_cat = normalize_category(category)
+    default_cta_map = {
+        "hope": "Đừng quên bấm đăng ký kênh để đón nhận những tin vui chất lượng!",
+        "ai": "Hãy bấm đăng ký kênh để cập nhật những bước tiến AI sát sườn cuộc sống!",
+        "viral": "Đăng ký kênh để đón xem tin độc lạ mỗi ngày!",
+    }
+    default_wrap_map = {
+        "hope": "Kỳ tích này thắp lên niềm hy vọng lớn cho tương lai.",
+        "ai": "Bước tiến này đang đi thẳng vào thực tiễn đời sống hàng ngày.",
+        "viral": "Một khoảnh khắc thật khó tin!",
+    }
+    cta_default = default_cta_map.get(norm_cat, "Hãy bấm đăng ký kênh để cập nhật tin mới mỗi ngày!")
+    wrap_default = default_wrap_map.get(norm_cat, "Đó là điểm nhấn đáng chú ý nhất hôm nay.")
+
+    cta_keywords = ("đăng ký", "theo dõi kênh", "subscribe", "bấm chuông")
+    last_sc = scenes[-1]
+    raw_last = re.sub(r"\s+", " ", str(last_sc.text or "")).strip()
+    sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", raw_last) if s.strip()]
+    has_cta = any(any(k in s.lower() for k in cta_keywords) for s in sents)
+
+    # If hope/ai only has <= 3 scenes and the last scene is still narrating body facts without a CTA,
+    # append a dedicated concise Scene 3 Outro/CTA so the body facts are not overwritten.
+    if norm_cat in ("hope", "ai") and len(scenes) <= 3 and not has_cta:
+        last_sc.text = _trim_to_complete_sentence(raw_last, max_words=36)
+        scenes.append(
+            DailyNewsScene(
+                scene_index=len(scenes),
+                text=f"{wrap_default} {cta_default}",
+                entity_query=last_sc.entity_query,
+                ai_prompt=last_sc.ai_prompt,
+                has_transition_cue=True,
+                image_url=last_sc.image_url,
+                social_platform=last_sc.social_platform,
+                source=last_sc.source,
+                source_url=last_sc.source_url,
+                source_event_index=last_sc.source_event_index,
+                topic_block=last_sc.topic_block,
+                chapter_label=last_sc.chapter_label,
+            )
+        )
+        return
+
+    non_cta_sents = [s for s in sents if not any(k in s.lower() for k in cta_keywords)]
+    cta_sents = [s for s in sents if any(k in s.lower() for k in cta_keywords)]
+
+    if non_cta_sents:
+        conclusion = non_cta_sents[0]
+        if conclusion[-1] not in ".!?":
+            conclusion += "."
+    else:
+        conclusion = wrap_default
+
+    if cta_sents:
+        cta_part = cta_sents[0]
+        if cta_part[-1] not in ".!?":
+            cta_part += "!"
+    else:
+        cta_part = cta_default
+
+    last_sc.text = f"{conclusion} {cta_part}".strip()
+
+
 def cook_summary_into_vietnamese(
     item: WorldNewsItem,
     vi_title: str,
@@ -4164,7 +4234,7 @@ def fallback_offline_news_script(
 
     elif norm_cat == "hope":
         if len(selected) == 1:
-            # Single Deep Hope Story (30s-60s duration, 4 scenes, ~115-150 words synthesized from primary + related articles)
+            # Single Deep Hope Story (up to 40s max, 4 scenes, ~75-105 words synthesized from primary + related articles)
             item = selected[0]
             clean_full_headline = re.sub(r"\s*[-|–]\s*[A-Za-z0-9\s\.]+$", "", item.title).strip()
             clean_full_headline = re.sub(
@@ -4172,30 +4242,30 @@ def fallback_offline_news_script(
             ).strip()
             vi_title = translate_text_en_to_vi(clean_full_headline)
             vi_titles.append(vi_title)
-            cooked_facts = cook_summary_into_vietnamese(item, vi_title, max_sentences=7, max_words=260)
+            cooked_facts = cook_summary_into_vietnamese(item, vi_title, max_sentences=6, max_words=220)
             fact_sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", cooked_facts) if s.strip()]
             if len(fact_sents) >= 2:
                 mid = max(1, len(fact_sents) // 2)
-                scene1_body = _trim_to_complete_sentence(" ".join(fact_sents[:mid]), max_words=52)
-                scene2_body = _trim_to_complete_sentence(" ".join(fact_sents[mid:]), max_words=52)
+                scene1_body = _trim_to_complete_sentence(" ".join(fact_sents[:mid]), max_words=38)
+                scene2_body = _trim_to_complete_sentence(" ".join(fact_sents[mid:]), max_words=38)
             else:
-                scene1_body = _trim_to_complete_sentence(cooked_facts, max_words=48)
+                scene1_body = _trim_to_complete_sentence(cooked_facts, max_words=38)
                 wiki_extra = get_wikipedia_context(extract_search_keywords_from_headline(item.title, category=category))
                 if wiki_extra:
-                    scene2_body = _trim_to_complete_sentence(translate_text_en_to_vi(wiki_extra), max_words=48)
+                    scene2_body = _trim_to_complete_sentence(translate_text_en_to_vi(wiki_extra), max_words=38)
                 else:
                     scene2_body = (
-                        "Theo các tài liệu nghiên cứu và báo cáo liên quan, giải pháp đột phá này đã vượt qua "
-                        "nhiều thử nghiệm khắt khe, mở ra cơ hội ứng dụng thực tiễn rộng rãi để cải thiện chất lượng sống và bảo vệ hệ sinh thái bền vững."
+                        "Theo các tài liệu nghiên cứu liên quan, giải pháp đột phá này đã vượt qua "
+                        "nhiều thử nghiệm khắt khe, mở ra cơ hội ứng dụng thực tiễn để bảo vệ sự sống bền vững."
                     )
             core_sub = extract_core_visual_subject(clean_full_headline)
             ai_prompt_val = f"cinematic news photography of {core_sub}, clean bright futuristic lighting, uplifting science aesthetic"
 
-            # Scene 0: Deep Hook (16-22 words)
+            # Scene 0: Deep Hook (12-18 words)
             scenes.append(
                 DailyNewsScene(
                     scene_index=0,
-                    text=f"Một bước tiến đầy hy vọng vừa được giới khoa học quốc tế ghi nhận và kiểm chứng: {vi_title}!",
+                    text=f"Một bước tiến đầy hy vọng vừa được giới khoa học quốc tế ghi nhận: {vi_title}!",
                     entity_query=extract_search_keywords_from_headline(item.title, category=category),
                     ai_prompt=ai_prompt_val,
                     has_transition_cue=False,
@@ -4204,7 +4274,7 @@ def fallback_offline_news_script(
                     source=item.source,
                 )
             )
-            # Scene 1: Primary Breakthrough & Mechanism (38-48 words)
+            # Scene 1: Primary Breakthrough & Mechanism (25-35 words)
             scenes.append(
                 DailyNewsScene(
                     scene_index=1,
@@ -4217,7 +4287,7 @@ def fallback_offline_news_script(
                     source=item.source,
                 )
             )
-            # Scene 2: Deep Multi-Source Context & Real-World Impact (40-50 words)
+            # Scene 2: Deep Multi-Source Context & Real-World Impact (25-35 words)
             scenes.append(
                 DailyNewsScene(
                     scene_index=2,
@@ -4230,11 +4300,11 @@ def fallback_offline_news_script(
                     source=item.source,
                 )
             )
-            # Scene 3: Inspiring Conclusion & CTA (18-24 words)
+            # Scene 3: Concise Conclusion & Subscribe CTA (14-20 words)
             scenes.append(
                 DailyNewsScene(
                     scene_index=3,
-                    text="Những kết quả thực tế từ các nghiên cứu liên quan này mở ra hy vọng lớn cho tương lai. Đăng ký kênh để đón nhận những tin vui chất lượng!",
+                    text="Kỳ tích này thắp lên hy vọng lớn cho tương lai. Đừng quên bấm đăng ký kênh để đón nhận những tin vui chất lượng!",
                     entity_query=extract_search_keywords_from_headline(item.title, category=category),
                     ai_prompt=ai_prompt_val,
                     has_transition_cue=True,
@@ -4243,6 +4313,7 @@ def fallback_offline_news_script(
                     source=item.source,
                 )
             )
+            ensure_short_outro_with_subscribe_cta(scenes, norm_cat)
             title = build_hook_title(vi_title, norm_cat, now_dt)
             return assert_and_sanitize_no_vietnam_content(
                 DailyNewsDigest(
@@ -4343,7 +4414,7 @@ def fallback_offline_news_script(
 
     elif norm_cat == "ai":
         if len(selected) == 1:
-            # Single Deep AI Story (30s-60s duration, 4 scenes, ~115-150 words synthesized from primary + related articles)
+            # Single Deep AI Story (up to 40s max, 4 scenes, ~75-105 words synthesized from primary + related articles)
             item = selected[0]
             clean_full_headline = re.sub(r"\s*[-|–]\s*[A-Za-z0-9\s\.]+$", "", item.title).strip()
             clean_full_headline = re.sub(
@@ -4351,21 +4422,21 @@ def fallback_offline_news_script(
             ).strip()
             vi_title = translate_text_en_to_vi(clean_full_headline)
             vi_titles.append(vi_title)
-            cooked_facts = cook_summary_into_vietnamese(item, vi_title, max_sentences=7, max_words=260)
+            cooked_facts = cook_summary_into_vietnamese(item, vi_title, max_sentences=6, max_words=220)
             fact_sents = [s.strip() for s in re.split(r"(?<=[.!?])\s+", cooked_facts) if s.strip()]
             if len(fact_sents) >= 2:
                 mid = max(1, len(fact_sents) // 2)
-                scene1_body = _trim_to_complete_sentence(" ".join(fact_sents[:mid]), max_words=52)
-                scene2_body = _trim_to_complete_sentence(" ".join(fact_sents[mid:]), max_words=52)
+                scene1_body = _trim_to_complete_sentence(" ".join(fact_sents[:mid]), max_words=38)
+                scene2_body = _trim_to_complete_sentence(" ".join(fact_sents[mid:]), max_words=38)
             else:
-                scene1_body = _trim_to_complete_sentence(cooked_facts, max_words=48)
+                scene1_body = _trim_to_complete_sentence(cooked_facts, max_words=38)
                 wiki_extra = get_wikipedia_context(extract_search_keywords_from_headline(item.title, category=category))
                 if wiki_extra:
-                    scene2_body = _trim_to_complete_sentence(translate_text_en_to_vi(wiki_extra), max_words=48)
+                    scene2_body = _trim_to_complete_sentence(translate_text_en_to_vi(wiki_extra), max_words=38)
                 else:
                     scene2_body = (
-                        "Theo đối chiếu từ các bài báo công nghệ liên quan, bước tiến này giúp tự động hóa nhiều tác vụ phức tạp "
-                        "trong công việc văn phòng, lập trình và đời sống hàng ngày, giúp tiết kiệm đáng kể thời gian và chi phí vận hành."
+                        "Theo đối chiếu từ các bài báo công nghệ liên quan, bước tiến này giúp tự động hóa nhiều tác vụ "
+                        "trong công việc và đời sống hàng ngày, giúp tiết kiệm đáng kể thời gian và chi phí."
                     )
             core_sub = extract_core_visual_subject(clean_full_headline)
             ai_prompt_hook = f"cinematic 9:16 futuristic artificial intelligence laboratory, neural network visualization of {core_sub}, wide-angle establishing shot, neon blue glow"
@@ -4373,11 +4444,11 @@ def fallback_offline_news_script(
             ai_prompt_body2 = f"cinematic 9:16 real-world modern workspace and professionals interacting with holographic AI assistant powered by {core_sub}, practical futuristic technology"
             ai_prompt_outro = f"cinematic 9:16 high-tech horizon of autonomous AI systems and glowing neural architecture inspired by {core_sub}, dramatic futuristic illumination"
 
-            # Scene 0: Direct Hook (16-22 words)
+            # Scene 0: Direct Hook (12-18 words)
             scenes.append(
                 DailyNewsScene(
                     scene_index=0,
-                    text=f"Bước ngoặt trí tuệ nhân tạo mới nhất đang tác động trực tiếp tới công việc và đời sống: {vi_title}!",
+                    text=f"Bước ngoặt trí tuệ nhân tạo mới đang tác động trực tiếp tới công việc và đời sống: {vi_title}!",
                     entity_query=extract_search_keywords_from_headline(item.title, category=category),
                     ai_prompt=ai_prompt_hook,
                     has_transition_cue=False,
@@ -4386,7 +4457,7 @@ def fallback_offline_news_script(
                     source=item.source,
                 )
             )
-            # Scene 1: Technical Essence & Verified Primary Facts (38-48 words)
+            # Scene 1: Technical Essence & Verified Primary Facts (25-35 words)
             scenes.append(
                 DailyNewsScene(
                     scene_index=1,
@@ -4399,7 +4470,7 @@ def fallback_offline_news_script(
                     source=item.source,
                 )
             )
-            # Scene 2: Related Articles Synthesis & Everyday Life Impact (40-50 words)
+            # Scene 2: Related Articles Synthesis & Everyday Life Impact (25-35 words)
             scenes.append(
                 DailyNewsScene(
                     scene_index=2,
@@ -4412,11 +4483,11 @@ def fallback_offline_news_script(
                     source=item.source,
                 )
             )
-            # Scene 3: Practical Takeaway & CTA (18-24 words)
+            # Scene 3: Concise Conclusion & Subscribe CTA (14-20 words)
             scenes.append(
                 DailyNewsScene(
                     scene_index=3,
-                    text="Bước tiến công nghệ này đang dần đi vào thực tiễn đời sống hàng ngày. Đăng ký kênh để nắm bắt những thông tin AI xác thực và sát sườn nhất!",
+                    text="Bước tiến này đang đi thẳng vào thực tiễn đời sống hàng ngày. Hãy bấm đăng ký kênh để cập nhật những bước tiến AI sát sườn cuộc sống!",
                     entity_query=extract_search_keywords_from_headline(item.title, category=category),
                     ai_prompt=ai_prompt_outro,
                     has_transition_cue=True,
@@ -4425,6 +4496,7 @@ def fallback_offline_news_script(
                     source=item.source,
                 )
             )
+            ensure_short_outro_with_subscribe_cta(scenes, norm_cat)
             title = build_hook_title(vi_title, norm_cat, now_dt)
             return assert_and_sanitize_no_vietnam_content(
                 DailyNewsDigest(

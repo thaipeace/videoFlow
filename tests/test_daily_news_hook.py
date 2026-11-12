@@ -309,13 +309,42 @@ class TinMoiChapterTests(unittest.TestCase):
         self.assertIn("[BÀI BÁO LIÊN QUAN", primary.full_text)
         self.assertIn("[KIẾN THỨC NỀN", primary.full_text)
 
-        # Verify offline fallback for single-topic hope & ai produces 4 scenes and >= 90 words (~30-60s)
+        # Verify offline fallback for single-topic hope & ai produces 4 scenes, <= 40s budget, and ends with subscribe CTA
         for cat in ("hope", "ai"):
             digest = fallback_offline_news_script([primary], max_topics=1, category=cat)
             self.assertEqual(len(digest.scenes), 4)
             total_words = sum(len(sc.text.split()) for sc in digest.scenes)
-            self.assertGreaterEqual(total_words, 85)
-            self.assertLessEqual(total_words, 200)
+            self.assertGreaterEqual(total_words, 60)
+            self.assertLessEqual(total_words, 145)
+            self.assertIn("đăng ký kênh", digest.scenes[-1].text.lower())
+
+    def test_ensure_short_outro_with_subscribe_cta_never_drops_ending(self):
+        from haizflow.services.daily_news import ensure_short_outro_with_subscribe_cta
+
+        # Case 1: Scene 3 has a long conclusion sentence + a subscribe CTA sentence -> both preserved
+        scenes_1 = [
+            DailyNewsScene(scene_index=0, text="Hook mở đầu."),
+            DailyNewsScene(scene_index=1, text="Nội dung chính từ bài báo."),
+            DailyNewsScene(scene_index=2, text="Nội dung đào sâu từ các bài liên quan."),
+            DailyNewsScene(
+                scene_index=3,
+                text="Bước tiến công nghệ này đang trực tiếp giải quyết bài toán chi phí và hiệu suất cho hàng triệu người lao động. Hãy bấm đăng ký kênh để cập nhật những bước tiến AI sát sườn cuộc sống!",
+            ),
+        ]
+        ensure_short_outro_with_subscribe_cta(scenes_1, "ai")
+        self.assertIn("đăng ký kênh", scenes_1[-1].text.lower())
+        self.assertIn("bước tiến công nghệ này", scenes_1[-1].text.lower())
+
+        # Case 2: LLM only returned 3 scenes (Hook, Body 1, Body 2) and forgot Outro/CTA -> appends Scene 3
+        scenes_2 = [
+            DailyNewsScene(scene_index=0, text="Hook mở đầu."),
+            DailyNewsScene(scene_index=1, text="Nội dung chính từ bài báo."),
+            DailyNewsScene(scene_index=2, text="Các bệnh viện ghi nhận tỷ lệ hồi phục đạt chín mươi phần trăm sau thử nghiệm."),
+        ]
+        ensure_short_outro_with_subscribe_cta(scenes_2, "hope")
+        self.assertEqual(len(scenes_2), 4)
+        self.assertIn("chín mươi phần trăm", scenes_2[2].text.lower())
+        self.assertIn("đăng ký kênh", scenes_2[3].text.lower())
 
 
 if __name__ == "__main__":

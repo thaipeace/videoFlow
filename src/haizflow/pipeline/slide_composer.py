@@ -616,7 +616,7 @@ def mix_master_audio(
     chain = voice_chain or VOICE_MASTER_CHAIN
 
     if not bgm_path or not Path(bgm_path).is_file():
-        filter_complex = f"[0:a]{chain}[out]"
+        filter_complex = f"[0:a]apad=pad_dur=0.40,{chain}[out]"
         cmd = [
             _binary("ffmpeg"),
             "-y",
@@ -631,9 +631,9 @@ def mix_master_audio(
             str(output_path.resolve()),
         ]
     else:
-        total_duration = get_video_duration(str(narration_audio.resolve()))
+        total_duration = get_video_duration(str(narration_audio.resolve())) + 0.40
         if target_video_duration and target_video_duration > 0:
-            total_duration = target_video_duration
+            total_duration = max(total_duration, target_video_duration)
 
         vol_str = f"{max(0.0, min(1.0, bgm_volume)):.2f}"
         fade_out_dur = min(1.5, max(0.2, total_duration * 0.2))
@@ -641,7 +641,7 @@ def mix_master_audio(
         fade_in_dur = min(0.4, max(0.1, total_duration * 0.1))
 
         filter_complex = (
-            f"[0:a]{chain},aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[vox];"
+            f"[0:a]apad=pad_dur=0.40,{chain},aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo[vox];"
             f"[1:a]volume={vol_str},aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,"
             f"afade=t=in:st=0:d={fade_in_dur:.2f},afade=t=out:st={fade_out_start:.2f}:d={fade_out_dur:.2f}[bgm];"
             f"[vox][bgm]sidechaincompress=threshold=0.08:ratio=4:attack=20:release=250[ducked];"
@@ -951,9 +951,10 @@ def generate_scenes_narration(
 
             scene.audio_path = str(audio_dest.resolve())
 
-        # Measure exact audio duration and timeline offset
+        # Measure exact audio duration and timeline offset (add 400ms tail buffer on final scene so outro is never clipped)
         duration_sec = get_video_duration(scene.audio_path)
-        scene.duration_ms = max(1000, int(round(duration_sec * 1000)))
+        tail_pad_ms = 400 if idx == total - 1 else 0
+        scene.duration_ms = max(1000, int(round(duration_sec * 1000)) + tail_pad_ms)
         scene.start_time_ms = current_timeline_ms
         current_timeline_ms += scene.duration_ms
 
@@ -1230,44 +1231,43 @@ def compose_article_video(
         if result.returncode != 0:
             raise RuntimeError(f"Final video muxing failed: {result.stderr.strip()}")
 
-        # Ensure YouTube Shorts hard duration ceiling: <= 25.0s
+        # Ensure YouTube Shorts duration ceiling:
+        # - Hope & AI categories: up to 40.0s maximum (if shorter, keep natural duration; never hard-cut with -t!)
+        # - Viral category: up to 25.0s maximum (never hard-cut with -t!)
         is_short_aspect = getattr(project.config, "aspect_ratio", "") == "9:16"
-        is_short_cat = getattr(project.config, "category", "") in ("viral", "hope", "tinla", "docla", "tinvui", "hyvong")
+        cat_raw = str(getattr(project.config, "category", "") or "").strip().lower()
+        is_deep_short_cat = cat_raw in ("hope", "tinvui", "hyvong", "ai", "ai_tech", "tin_ai", "ai_shorts")
+        is_short_cat = is_deep_short_cat or cat_raw in ("viral", "tinla", "docla")
         if is_short_aspect or is_short_cat:
             from haizflow.utils.ffmpeg import get_video_duration
             actual_dur = get_video_duration(str(output_video_path.resolve()))
-            max_short_sec = 25.0
+            max_short_sec = 40.0 if is_deep_short_cat else 25.0
+            target_dur = 39.5 if is_deep_short_cat else 24.8
             if actual_dur > max_short_sec:
                 logger.info(
-                    "Shorts video duration (%.2fs) exceeds %.1fs limit. Applying dynamic adjustment to guarantee <= %.1fs.",
+                    "Shorts video duration (%.2fs) exceeds %.1fs limit. Applying tempo adjustment to guarantee <= %.1fs without cutting ending.",
                     actual_dur, max_short_sec, max_short_sec
                 )
                 capped_tmp = output_video_path.parent / f"capped_{output_video_path.name}"
-                target_dur = 24.8
                 speed_ratio = actual_dur / target_dur
-                if speed_ratio <= 1.30:
-                    cap_cmd = [
-                        _binary("ffmpeg"), "-y", "-hide_banner", "-loglevel", "error",
-                        "-i", str(output_video_path.resolve()),
-                        "-filter:v", f"setpts=PTS/{speed_ratio:.4f}",
-                        "-filter:a", f"atempo={speed_ratio:.4f}",
-                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
-                        "-c:a", "aac", "-b:a", "320k",
-                        "-movflags", "+faststart",
-                        str(capped_tmp.resolve())
-                    ]
-                else:
-                    fade_st = max_short_sec - 0.5
-                    cap_cmd = [
-                        _binary("ffmpeg"), "-y", "-hide_banner", "-loglevel", "error",
-                        "-i", str(output_video_path.resolve()),
-                        "-t", f"{max_short_sec:.2f}",
-                        "-filter:a", f"afade=t=out:st={fade_st:.2f}:d=0.5",
-                        "-c:v", "copy",
-                        "-c:a", "aac", "-b:a", "320k",
-                        "-movflags", "+faststart",
-                        str(capped_tmp.resolve())
-                    ]
+                # Build chained atempo filter (each atempo stage supports 0.5..2.0) so we NEVER hard-truncate (-t) mid-sentence
+                rem_ratio = speed_ratio
+                atempo_parts: List[str] = []
+                while rem_ratio > 2.0:
+                    atempo_parts.append("atempo=2.0")
+                    rem_ratio /= 2.0
+                atempo_parts.append(f"atempo={max(0.5, min(2.0, rem_ratio)):.4f}")
+                atempo_filter = ",".join(atempo_parts)
+                cap_cmd = [
+                    _binary("ffmpeg"), "-y", "-hide_banner", "-loglevel", "error",
+                    "-i", str(output_video_path.resolve()),
+                    "-filter:v", f"setpts=PTS/{speed_ratio:.4f}",
+                    "-filter:a", atempo_filter,
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+                    "-c:a", "aac", "-b:a", "320k",
+                    "-movflags", "+faststart",
+                    str(capped_tmp.resolve())
+                ]
                 res_cap = subprocess.run(
                     cap_cmd,
                     capture_output=True,
@@ -1278,7 +1278,7 @@ def compose_article_video(
                 )
                 if res_cap.returncode == 0 and capped_tmp.is_file() and capped_tmp.stat().st_size > 1000:
                     os.replace(capped_tmp, output_video_path)
-                    logger.info("Capped Shorts video duration successfully to %.2fs", get_video_duration(str(output_video_path.resolve())))
+                    logger.info("Adjusted Shorts video duration successfully to %.2fs", get_video_duration(str(output_video_path.resolve())))
                 else:
                     if capped_tmp.is_file():
                         try:
